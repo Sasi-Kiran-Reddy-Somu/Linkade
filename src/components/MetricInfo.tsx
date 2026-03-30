@@ -16,8 +16,14 @@ const METRIC_INFO: Record<string, string> = {
   Resp: "How consistently the site owner responds to backlink requests. Higher means a more reliable exchange partner.",
 };
 
-export function MetricInfo({ metric }: { metric: string }) {
-  const text = METRIC_INFO[metric];
+const OWN_METRIC_INFO: Record<string, string> = {
+  ...METRIC_INFO,
+  Responsiveness: "Your response rate to backlink requests on this project. Respond promptly to incoming requests to increase your score and attract more exchange partners.",
+  Resp: "Your response rate to backlink requests on this project. Respond promptly to incoming requests to increase your score and attract more exchange partners.",
+};
+
+export function MetricInfo({ metric, isOwn }: { metric: string; isOwn?: boolean }) {
+  const text = (isOwn ? OWN_METRIC_INFO : METRIC_INFO)[metric];
   if (!text) return null;
   return (
     <Tooltip>

@@ -336,7 +336,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             <Metric label="Spam" value={spamScore} colorClass={spamScore === undefined ? "text-gray-800" : spamScore <= 3 ? "text-green-600" : spamScore <= 7 ? "text-amber-500" : "text-red-500"} />
             {responsivenessScore !== undefined && (
               <div className="flex flex-col items-center justify-center rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 min-w-[72px]">
-                <span className="flex items-center gap-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Resp.<MetricInfo metric="Resp" /></span>
+                <span className="flex items-center gap-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Resp.<MetricInfo metric="Resp" isOwn /></span>
                 <span className={`text-lg font-bold ${responsivenessScore >= 75 ? "text-green-600" : responsivenessScore >= 50 ? "text-amber-500" : "text-red-500"}`}>
                   {responsivenessScore}%
                 </span>

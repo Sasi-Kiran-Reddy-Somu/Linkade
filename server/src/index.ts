@@ -14,6 +14,7 @@ import creditsRoutes     from "./routes/credits.js";
 import marketplaceRoutes from "./routes/marketplace.js";
 import webhooksRoutes    from "./routes/webhooks.js";
 import adminRoutes       from "./routes/admin.js";
+import aiRoutes          from "./routes/ai.js";
 
 const app = new Hono();
 
@@ -38,6 +39,7 @@ app.route("/credits",     creditsRoutes);
 app.route("/marketplace", marketplaceRoutes);
 app.route("/webhooks",    webhooksRoutes);
 app.route("/admin",       adminRoutes);
+app.route("/ai",          aiRoutes);
 
 // ── 404 fallback ──────────────────────────────────────────────────────────────
 app.notFound((c) => c.json({ error: "Not found" }, 404));

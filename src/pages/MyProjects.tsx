@@ -1,5 +1,5 @@
 import AppLayout from "@/components/AppLayout";
-import { Briefcase, Search, Activity, X, Sparkles, Plus, ScrollText, Check, Copy, Info } from "lucide-react";
+import { Briefcase, Search, Activity, X, Sparkles, Plus, Check, Copy, Info } from "lucide-react";
 import ProjectCard from "@/components/ProjectCard";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,33 +35,16 @@ const INITIAL_PROJECTS: Project[] = [
   { name: "JustWhatWorks", domain: "justwhatworks.com", exchangeEnabled: false, exchangeStatus: "Exchange Off", responsivenessScore: 61, da: 27, dr: 33, tf: 21, traffic: 4800, spamScore: 7 },
 ];
 
-// ── AI category/tag detection (mock) ──────────────────────────────────────────
+// ── AI category/tag detection via backend ─────────────────────────────────────
 
-const CATEGORY_TAG_MAP: Record<string, { category: string; tags: string[] }> = {
-  tech: { category: "Technology", tags: ["SaaS/Software", "Web Dev", "AI/ML", "DevOps", "Open Source", "Cybersecurity", "Mobile Apps", "Cloud Computing", "APIs", "Programming"] },
-  finance: { category: "Finance", tags: ["Personal Finance", "Investing", "FinTech", "Crypto", "Accounting", "Stock Trading", "Budgeting", "Banking", "Insurance", "Real Estate"] },
-  health: { category: "Health & Fitness", tags: ["Nutrition", "Workout", "Mental Health", "Yoga", "Weight Loss", "Wellness", "Running", "Diet Tips", "Supplements", "Sports"] },
-  marketing: { category: "Marketing & SEO", tags: ["SEO", "Content Marketing", "Social Media", "Email Marketing", "PPC", "Link Building", "Analytics", "CRO", "Affiliate Marketing", "Branding"] },
-  travel: { category: "Travel", tags: ["Adventure Travel", "Budget Travel", "Destinations", "Digital Nomad", "Solo Travel", "Road Trips", "Hotels", "Luxury Travel", "Travel Hacks", "Airlines"] },
-  food: { category: "Food & Lifestyle", tags: ["Recipes", "Vegan", "Cooking Tips", "Restaurants", "Meal Prep", "Wine", "Coffee", "Baking", "Healthy Eating", "Nutrition"] },
-  education: { category: "Education", tags: ["Online Learning", "Study Tips", "E-learning", "Tutoring", "Languages", "STEM", "Career Growth", "Certifications", "EdTech", "Higher Ed"] },
-  ecommerce: { category: "E-commerce", tags: ["Dropshipping", "Amazon FBA", "Shopify", "Product Reviews", "Fashion", "Retail", "Print on Demand", "Wholesale", "Logistics", "DTC Brands"] },
-  gaming: { category: "Gaming", tags: ["PC Gaming", "Console Gaming", "Mobile Gaming", "Esports", "Game Reviews", "Streaming", "RPG", "FPS", "Indie Games", "Game Dev"] },
-  business: { category: "Business & Entrepreneurship", tags: ["Startups", "Growth Hacking", "Productivity", "B2B", "Strategy", "Leadership", "Sales", "Networking", "Freelancing", "Remote Work"] },
-};
-
-function detectCategoryTags(domain: string): { category: string; tags: string[] } {
-  const d = domain.toLowerCase();
-  if (/tech|software|dev|code|saas|cloud|ai\b/.test(d)) return CATEGORY_TAG_MAP.tech;
-  if (/finance|money|invest|crypto|bank|trading|wealth/.test(d)) return CATEGORY_TAG_MAP.finance;
-  if (/health|fit|wellness|nutrition|diet|workout|yoga/.test(d)) return CATEGORY_TAG_MAP.health;
-  if (/market|seo|media|content|brand|agency/.test(d)) return CATEGORY_TAG_MAP.marketing;
-  if (/travel|trip|tour|flight|hotel|nomad/.test(d)) return CATEGORY_TAG_MAP.travel;
-  if (/food|recipe|cook|eat|vegan|restaurant|cafe/.test(d)) return CATEGORY_TAG_MAP.food;
-  if (/edu|learn|school|course|tutor|academy/.test(d)) return CATEGORY_TAG_MAP.education;
-  if (/shop|store|ecomm|retail|product/.test(d)) return CATEGORY_TAG_MAP.ecommerce;
-  if (/game|gaming|esport|play/.test(d)) return CATEGORY_TAG_MAP.gaming;
-  return CATEGORY_TAG_MAP.business;
+async function detectCategoryTags(domain: string): Promise<{ category: string; tags: string[] }> {
+  const res = await fetch("/api/ai/detect-category", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain }),
+  });
+  if (!res.ok) throw new Error("Detection failed");
+  return res.json();
 }
 
 function generateToken() {
@@ -214,7 +197,7 @@ export default function MyProjects() {
     setAddOpen(true);
   }
 
-  function handleStep1Next() {
+  async function handleStep1Next() {
     const e: { name?: string; domain?: string } = {};
     if (!newName.trim()) e.name = "Project name is required.";
     if (!newDomain.trim()) e.domain = "Domain is required.";
@@ -223,12 +206,17 @@ export default function MyProjects() {
     setAnalyzing(true);
     setAddStep(2);
     const cleanDomain = newDomain.trim().replace(/^https?:\/\//, "");
-    setTimeout(() => {
-      const detected = detectCategoryTags(cleanDomain);
+    try {
+      const detected = await detectCategoryTags(cleanDomain);
       setDetectedCategory(detected.category);
       setSuggestedTags(detected.tags);
+    } catch {
+      // Fallback if API is unavailable
+      setDetectedCategory("Business & Entrepreneurship");
+      setSuggestedTags(["Startups", "Growth Hacking", "Productivity", "B2B", "Strategy", "Leadership", "Sales", "Networking", "Freelancing", "Remote Work"]);
+    } finally {
       setAnalyzing(false);
-    }, 1600);
+    }
   }
 
   function toggleTag(tag: string) {

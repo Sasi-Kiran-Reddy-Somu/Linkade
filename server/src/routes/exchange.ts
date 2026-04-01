@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, ilike, gte, lte, inArray, desc, asc, sql } from "drizzle-orm";
+import { eq, and, ilike, gte, lte, inArray, desc, asc, sql, SQL } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { websites, websiteMetrics } from "../db/schema/index.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -17,14 +17,14 @@ app.get("/websites", async (c) => {
   const sortAscending = q("sort_order") === "asc";
 
   // Build filters
-  const conditions = [
+  const conditions: SQL[] = [
     eq(websites.isActive, true),
     eq(websites.isMarketplace, false),
-    search ? ilike(websites.domain, `%${search}%`) : undefined,
-    q("language") ? eq(websites.language, q("language")!) : undefined,
-    q("available_link_insertion") === "true" ? eq(websites.availableLinkInsertion, true) : undefined,
-    q("available_guest_post")     === "true" ? eq(websites.availableGuestPost, true) : undefined,
-  ].filter(Boolean) as Parameters<typeof and>[];
+    ...(search ? [ilike(websites.domain, `%${search}%`)] : []),
+    ...(q("language") ? [eq(websites.language, q("language")!)] : []),
+    ...(q("available_link_insertion") === "true" ? [eq(websites.availableLinkInsertion, true)] : []),
+    ...(q("available_guest_post")     === "true" ? [eq(websites.availableGuestPost, true)] : []),
+  ];
 
   const rows = await db
     .select({

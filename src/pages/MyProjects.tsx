@@ -137,6 +137,7 @@ export default function MyProjects() {
   const [newDomain, setNewDomain] = useState("");
   const [errors, setErrors] = useState<{ name?: string; domain?: string }>({});
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState(false);
   const [detectedCategory, setDetectedCategory] = useState("");
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -194,6 +195,7 @@ export default function MyProjects() {
     setDetectedCategory("");
     setSuggestedTags([]);
     setAnalyzing(false);
+    setAnalyzeError(false);
     setAddOpen(true);
   }
 
@@ -204,16 +206,18 @@ export default function MyProjects() {
     if (Object.keys(e).length) { setErrors(e); return; }
 
     setAnalyzing(true);
+    setAnalyzeError(false);
     setAddStep(2);
     const cleanDomain = newDomain.trim().replace(/^https?:\/\//, "");
     try {
       const detected = await detectCategoryTags(cleanDomain);
       setDetectedCategory(detected.category);
       setSuggestedTags(detected.tags);
-    } catch {
-      // Fallback if API is unavailable
-      setDetectedCategory("Business & Entrepreneurship");
-      setSuggestedTags(["Startups", "Growth Hacking", "Productivity", "B2B", "Strategy", "Leadership", "Sales", "Networking", "Freelancing", "Remote Work"]);
+    } catch (err) {
+      console.error("[detect-category]", err);
+      setAnalyzeError(true);
+      setDetectedCategory("");
+      setSuggestedTags([]);
     } finally {
       setAnalyzing(false);
     }
@@ -449,6 +453,22 @@ export default function MyProjects() {
                 ))}
               </div>
             </div>
+          ) : analyzeError ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+              <div className="h-10 w-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center">
+                <X className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Could not reach AI service</p>
+                <p className="text-xs text-muted-foreground mt-1">Make sure the backend server is running with a valid OpenAI API key.</p>
+              </div>
+              <button
+                onClick={() => { setAddStep(1); setAnalyzeError(false); }}
+                className="text-xs text-primary hover:underline"
+              >
+                ← Go back and try again
+              </button>
+            </div>
           ) : (
             <div className="space-y-5 mt-2">
               {/* Detected category */}
@@ -513,7 +533,7 @@ export default function MyProjects() {
             </div>
           )}
 
-          {!analyzing && (
+          {!analyzing && !analyzeError && (
             <div className="flex justify-between gap-2 mt-5">
               <button
                 onClick={() => setAddStep(1)}

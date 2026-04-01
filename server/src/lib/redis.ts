@@ -1,34 +1,44 @@
 import Redis from "ioredis";
 
-export const redis = new Redis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: 3,
-  lazyConnect: true,
-});
+function createRedisClient() {
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    console.warn("[Redis] REDIS_URL not set — Redis features disabled.");
+    return null;
+  }
+  const client = new Redis(url, {
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+  client.on("error", (err) => {
+    console.error("[Redis] connection error:", err.message);
+  });
+  return client;
+}
 
-redis.on("error", (err) => {
-  console.error("[Redis] connection error:", err);
-});
+export const redis = createRedisClient();
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 export async function setex(key: string, ttlSeconds: number, value: string) {
-  await redis.setex(key, ttlSeconds, value);
+  await redis?.setex(key, ttlSeconds, value);
 }
 
-export async function get(key: string) {
-  return redis.get(key);
+export async function get(key: string): Promise<string | null> {
+  return redis?.get(key) ?? null;
 }
 
 export async function del(key: string) {
-  await redis.del(key);
+  await redis?.del(key);
 }
 
-// Rate-limit sliding window — returns { allowed, remaining, reset }
 export async function rateLimit(
   key: string,
   maxRequests: number,
   windowSeconds: number,
 ): Promise<{ allowed: boolean; remaining: number }> {
+  if (!redis) return { allowed: true, remaining: maxRequests };
+
   const now = Date.now();
   const windowStart = now - windowSeconds * 1000;
 

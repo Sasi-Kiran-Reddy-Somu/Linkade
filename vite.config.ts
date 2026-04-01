@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
-    proxy: {
+    // Local dev proxy — when VITE_API_URL is not set, /api/* → localhost:3000
+    proxy: process.env.VITE_API_URL ? {} : {
       "/api": {
         target: "http://localhost:3000",
         changeOrigin: true,

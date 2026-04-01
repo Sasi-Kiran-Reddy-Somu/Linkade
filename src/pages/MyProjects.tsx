@@ -37,10 +37,15 @@ const INITIAL_PROJECTS: Project[] = [
 
 // ── AI category/tag detection via backend ─────────────────────────────────────
 
+// VITE_API_URL = Railway backend URL (e.g. https://linkade-production.up.railway.app)
+// In local dev, leave VITE_API_URL unset — Vite proxy handles /api/* → localhost:3000
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 async function detectCategoryTags(domain: string): Promise<{ category: string; tags: string[] }> {
-  const res = await fetch(`${API_BASE}/api/ai/detect-category`, {
+  // Local: /api/ai/detect-category (Vite proxy strips /api → localhost:3000/ai/detect-category)
+  // Production: https://backend.railway.app/ai/detect-category
+  const url = API_BASE ? `${API_BASE}/ai/detect-category` : `/api/ai/detect-category`;
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain }),

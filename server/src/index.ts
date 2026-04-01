@@ -21,8 +21,14 @@ const app = new Hono();
 // ── Global middleware ─────────────────────────────────────────────────────────
 app.use("*", logger());
 app.use("*", prettyJSON());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:8080",
+].filter(Boolean) as string[];
+
 app.use("*", cors({
-  origin:      process.env.FRONTEND_URL ?? "http://localhost:5173",
+  origin: (origin) => allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
   credentials: true,
 }));
 

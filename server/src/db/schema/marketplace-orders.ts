@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
-import { users } from "./users";
-import { websites } from "./websites";
-import { payments } from "./payments";
+import { users } from "./users.js";
+import { websites } from "./websites.js";
+import { payments } from "./payments.js";
 
 export const marketplaceOrders = pgTable("marketplace_orders", {
   id:          uuid("id").primaryKey().defaultRandom(),

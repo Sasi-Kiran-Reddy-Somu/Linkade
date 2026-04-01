@@ -1,6 +1,6 @@
 import { pgTable, uuid, integer, numeric, timestamp } from "drizzle-orm/pg-core";
-import { users } from "./users";
-import { projects } from "./projects";
+import { users } from "./users.js";
+import { projects } from "./projects.js";
 
 export const responsivenessScores = pgTable("responsiveness_scores", {
   id:             uuid("id").primaryKey().defaultRandom(),

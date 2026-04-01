@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StickyNote, Globe, ScrollText, X, Plus, Settings, AlertTriangle, CheckCircle2, Copy, Check } from "lucide-react";
+import { StickyNote, Globe, ScrollText, X, Plus, Settings, AlertTriangle, CheckCircle2, Copy, Check, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MetricInfo } from "./MetricInfo";
 
@@ -125,6 +125,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 
   // Exchange modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [verifyLaterInfoOpen, setVerifyLaterInfoOpen] = useState(false);
   const [draftLinkInsertion, setDraftLinkInsertion] = useState(false);
   const [draftGuestPost, setDraftGuestPost] = useState(false);
   const [draftLinkInsertionGuidelines, setDraftLinkInsertionGuidelines] = useState<string[]>([]);
@@ -165,12 +166,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isExchangeEnabled && !linkInsertionEnabled && !guestPostEnabled) {
-      setIsExchangeEnabled(false);
-    }
-  }, [linkInsertionEnabled, guestPostEnabled]);
-
   function openVerifyModal() {
     setVerifySuccess(false);
     setVerifyMethod("dns");
@@ -194,12 +189,13 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     setGuestPostEnabled(draftGuestPost);
     setLinkInsertionGuidelines(draftLinkInsertionGuidelines.filter((p) => p.trim()));
     setGuestPostGuidelines(draftGuestPostGuidelines.filter((p) => p.trim()));
-    if (draftLinkInsertion || draftGuestPost) setIsExchangeEnabled(true);
+    setIsExchangeEnabled(draftLinkInsertion || draftGuestPost);
   }
 
   function handleVerifyLater() {
     applyModalDraft();
     setModalOpen(false);
+    setVerifyLaterInfoOpen(true);
   }
 
   function handleVerifyNow() {
@@ -565,6 +561,36 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setGuidelinesModal(null)} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors">Cancel</button>
             <button onClick={handleGuidelinesSave} className="rounded-md bg-black px-4 py-2 text-sm text-white hover:bg-black/80 transition-colors">Save & Close</button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Verify Later Info Popup ── */}
+      <Dialog open={verifyLaterInfoOpen} onOpenChange={setVerifyLaterInfoOpen}>
+        <DialogContent className="w-[420px]">
+          <button
+            onClick={() => setVerifyLaterInfoOpen(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col items-center text-center gap-3 py-2">
+            <div className="h-12 w-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+              <Info className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-semibold text-gray-900">Verification Required</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                <span className="font-medium text-gray-700">{domain}</span> won't be visible in the exchange and won't be available to receive requests until ownership is verified.
+              </p>
+              <p className="text-xs text-gray-400 mt-1">You can verify anytime using the "Verification Pending" badge on this project card.</p>
+            </div>
+            <button
+              onClick={() => setVerifyLaterInfoOpen(false)}
+              className="mt-1 rounded-md bg-black px-6 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+            >
+              Got it
+            </button>
           </div>
         </DialogContent>
       </Dialog>

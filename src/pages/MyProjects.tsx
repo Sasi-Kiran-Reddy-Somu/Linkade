@@ -1,5 +1,5 @@
 import AppLayout from "@/components/AppLayout";
-import { Briefcase, Search, Activity, X } from "lucide-react";
+import { Briefcase, Search, Activity, X, Sparkles, Plus, ScrollText, Check, Copy, Info } from "lucide-react";
 import ProjectCard from "@/components/ProjectCard";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +18,8 @@ interface Project {
   tf: number;
   traffic: number;
   spamScore: number;
+  category?: string;
+  tags?: string[];
 }
 
 function randInt(min: number, max: number) {
@@ -33,11 +35,88 @@ const INITIAL_PROJECTS: Project[] = [
   { name: "JustWhatWorks", domain: "justwhatworks.com", exchangeEnabled: false, exchangeStatus: "Exchange Off", responsivenessScore: 61, da: 27, dr: 33, tf: 21, traffic: 4800, spamScore: 7 },
 ];
 
+// ── AI category/tag detection (mock) ──────────────────────────────────────────
+
+const CATEGORY_TAG_MAP: Record<string, { category: string; tags: string[] }> = {
+  tech: { category: "Technology", tags: ["SaaS/Software", "Web Dev", "AI/ML", "DevOps", "Open Source", "Cybersecurity", "Mobile Apps", "Cloud Computing", "APIs", "Programming"] },
+  finance: { category: "Finance", tags: ["Personal Finance", "Investing", "FinTech", "Crypto", "Accounting", "Stock Trading", "Budgeting", "Banking", "Insurance", "Real Estate"] },
+  health: { category: "Health & Fitness", tags: ["Nutrition", "Workout", "Mental Health", "Yoga", "Weight Loss", "Wellness", "Running", "Diet Tips", "Supplements", "Sports"] },
+  marketing: { category: "Marketing & SEO", tags: ["SEO", "Content Marketing", "Social Media", "Email Marketing", "PPC", "Link Building", "Analytics", "CRO", "Affiliate Marketing", "Branding"] },
+  travel: { category: "Travel", tags: ["Adventure Travel", "Budget Travel", "Destinations", "Digital Nomad", "Solo Travel", "Road Trips", "Hotels", "Luxury Travel", "Travel Hacks", "Airlines"] },
+  food: { category: "Food & Lifestyle", tags: ["Recipes", "Vegan", "Cooking Tips", "Restaurants", "Meal Prep", "Wine", "Coffee", "Baking", "Healthy Eating", "Nutrition"] },
+  education: { category: "Education", tags: ["Online Learning", "Study Tips", "E-learning", "Tutoring", "Languages", "STEM", "Career Growth", "Certifications", "EdTech", "Higher Ed"] },
+  ecommerce: { category: "E-commerce", tags: ["Dropshipping", "Amazon FBA", "Shopify", "Product Reviews", "Fashion", "Retail", "Print on Demand", "Wholesale", "Logistics", "DTC Brands"] },
+  gaming: { category: "Gaming", tags: ["PC Gaming", "Console Gaming", "Mobile Gaming", "Esports", "Game Reviews", "Streaming", "RPG", "FPS", "Indie Games", "Game Dev"] },
+  business: { category: "Business & Entrepreneurship", tags: ["Startups", "Growth Hacking", "Productivity", "B2B", "Strategy", "Leadership", "Sales", "Networking", "Freelancing", "Remote Work"] },
+};
+
+function detectCategoryTags(domain: string): { category: string; tags: string[] } {
+  const d = domain.toLowerCase();
+  if (/tech|software|dev|code|saas|cloud|ai\b/.test(d)) return CATEGORY_TAG_MAP.tech;
+  if (/finance|money|invest|crypto|bank|trading|wealth/.test(d)) return CATEGORY_TAG_MAP.finance;
+  if (/health|fit|wellness|nutrition|diet|workout|yoga/.test(d)) return CATEGORY_TAG_MAP.health;
+  if (/market|seo|media|content|brand|agency/.test(d)) return CATEGORY_TAG_MAP.marketing;
+  if (/travel|trip|tour|flight|hotel|nomad/.test(d)) return CATEGORY_TAG_MAP.travel;
+  if (/food|recipe|cook|eat|vegan|restaurant|cafe/.test(d)) return CATEGORY_TAG_MAP.food;
+  if (/edu|learn|school|course|tutor|academy/.test(d)) return CATEGORY_TAG_MAP.education;
+  if (/shop|store|ecomm|retail|product/.test(d)) return CATEGORY_TAG_MAP.ecommerce;
+  if (/game|gaming|esport|play/.test(d)) return CATEGORY_TAG_MAP.gaming;
+  return CATEGORY_TAG_MAP.business;
+}
+
+function generateToken() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function MiniToggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${checked ? "bg-green-500" : "bg-gray-300"}`}
+    >
+      <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 mt-0.5 ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+    </button>
+  );
+}
+
+function PointsInput({ points, onChange, hint }: { points: string[]; onChange: (p: string[]) => void; hint?: string }) {
+  return (
+    <div className="space-y-2">
+      {points.map((point, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span className="text-gray-300 text-sm select-none">•</span>
+          <input
+            value={point}
+            onChange={(e) => { const next = [...points]; next[i] = e.target.value; onChange(next); }}
+            placeholder="Add a guideline..."
+            className="flex-1 text-xs border border-border rounded-md px-2.5 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <button onClick={() => onChange(points.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-400 transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      <button onClick={() => onChange([...points, ""])} className="flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+        <Plus className="h-3 w-3" /> Add point
+      </button>
+      {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem("home-projects");
     const parsed: Project[] = saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-    // Backfill any projects missing dr, spamScore, or responsivenessScore
     return parsed.map((p) => ({
       ...p,
       dr: p.dr ?? randInt(5, 80),
@@ -68,13 +147,37 @@ export default function MyProjects() {
     setRespBannerVisible(false);
   }
 
-  // Add project modal state
+  // ── Add modal state ──────────────────────────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
+  const [addStep, setAddStep] = useState<1 | 2>(1);
   const [newName, setNewName] = useState("");
   const [newDomain, setNewDomain] = useState("");
-  const [newExchange, setNewExchange] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; domain?: string }>({});
+  const [analyzing, setAnalyzing] = useState(false);
+  const [detectedCategory, setDetectedCategory] = useState("");
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [newExchange, setNewExchange] = useState(false);
 
+  // ── Exchange options modal (appears after add if exchange=on) ────────────────
+  const [exchangeModalOpen, setExchangeModalOpen] = useState(false);
+  const [pendingDomain, setPendingDomain] = useState("");
+  const [draftLI, setDraftLI] = useState(false);
+  const [draftGP, setDraftGP] = useState(false);
+  const [draftLIGuidelines, setDraftLIGuidelines] = useState<string[]>([]);
+  const [draftGPGuidelines, setDraftGPGuidelines] = useState<string[]>([]);
+
+  // ── Verify modal (from exchange options) ─────────────────────────────────────
+  const [addVerifyOpen, setAddVerifyOpen] = useState(false);
+  const [addVerifyMethod, setAddVerifyMethod] = useState<"meta" | "dns">("meta");
+  const [addVerifyCopied, setAddVerifyCopied] = useState<string | null>(null);
+  const [addVerifyToken, setAddVerifyToken] = useState("");
+  const [addVerifySuccess, setAddVerifySuccess] = useState(false);
+
+  // ── Info popup (after verify later) ──────────────────────────────────────────
+  const [infoPopupOpen, setInfoPopupOpen] = useState(false);
+
+  // ── Notes helpers ────────────────────────────────────────────────────────────
   function openNotes(name: string, domain: string) {
     setDraftNote(notes[domain] ?? "");
     setActiveProject({ name, domain });
@@ -97,32 +200,129 @@ export default function MyProjects() {
     setProjects((prev) => prev.map((p) => p.domain === domain ? { ...p, name } : p));
   }
 
+  // ── Add modal helpers ────────────────────────────────────────────────────────
   function openAddModal() {
     setNewName("");
     setNewDomain("");
     setNewExchange(false);
     setErrors({});
+    setAddStep(1);
+    setSelectedTags([]);
+    setDetectedCategory("");
+    setSuggestedTags([]);
+    setAnalyzing(false);
     setAddOpen(true);
   }
 
-  function handleAddProject() {
+  function handleStep1Next() {
     const e: { name?: string; domain?: string } = {};
     if (!newName.trim()) e.name = "Project name is required.";
     if (!newDomain.trim()) e.domain = "Domain is required.";
     if (Object.keys(e).length) { setErrors(e); return; }
 
+    setAnalyzing(true);
+    setAddStep(2);
+    const cleanDomain = newDomain.trim().replace(/^https?:\/\//, "");
+    setTimeout(() => {
+      const detected = detectCategoryTags(cleanDomain);
+      setDetectedCategory(detected.category);
+      setSuggestedTags(detected.tags);
+      setAnalyzing(false);
+    }, 1600);
+  }
+
+  function toggleTag(tag: string) {
+    setSelectedTags((prev) => {
+      if (prev.includes(tag)) return prev.filter((t) => t !== tag);
+      if (prev.length >= 5) return prev;
+      return [...prev, tag];
+    });
+  }
+
+  function handleAddProject() {
+    const domain = newDomain.trim().replace(/^https?:\/\//, "");
     setProjects((prev) => [
       ...prev,
       {
         name: newName.trim(),
-        domain: newDomain.trim().replace(/^https?:\/\//, ""),
-        exchangeEnabled: newExchange,
-        exchangeStatus: newExchange ? "Pending" : "Exchange Off",
+        domain,
+        exchangeEnabled: false,
+        exchangeStatus: "Exchange Off",
+        category: detectedCategory,
+        tags: selectedTags,
         ...randomMetrics(),
       },
     ]);
+    setPendingDomain(domain);
     setAddOpen(false);
+
+    if (newExchange) {
+      setDraftLI(false);
+      setDraftGP(false);
+      setDraftLIGuidelines([]);
+      setDraftGPGuidelines([]);
+      setExchangeModalOpen(true);
+    }
   }
+
+  // ── Exchange options helpers ─────────────────────────────────────────────────
+  function writeExchangeToStorage(domain: string, token: string, verified: boolean) {
+    const willBeEnabled = draftLI || draftGP;
+    localStorage.setItem(`project-exchange-${domain}`, JSON.stringify({
+      isExchangeEnabled: willBeEnabled,
+      linkInsertionEnabled: draftLI,
+      guestPostEnabled: draftGP,
+      linkInsertionGuidelines: draftLIGuidelines.filter((p) => p.trim()),
+      guestPostGuidelines: draftGPGuidelines.filter((p) => p.trim()),
+      isVerified: verified,
+      verificationToken: token,
+    }));
+    setProjects((prev) => prev.map((p) =>
+      p.domain === domain
+        ? { ...p, exchangeEnabled: willBeEnabled, exchangeStatus: willBeEnabled ? (verified ? "Active" : "Pending") : "Exchange Off" }
+        : p
+    ));
+  }
+
+  function handleExchangeVerifyLater() {
+    const token = generateToken();
+    writeExchangeToStorage(pendingDomain, token, false);
+    setExchangeModalOpen(false);
+    setInfoPopupOpen(true);
+  }
+
+  function handleExchangeVerifyNow() {
+    const token = generateToken();
+    setAddVerifyToken(token);
+    writeExchangeToStorage(pendingDomain, token, false);
+    setExchangeModalOpen(false);
+    setAddVerifySuccess(false);
+    setAddVerifyMethod("meta");
+    setAddVerifyOpen(true);
+  }
+
+  function handleVerifySubmit() {
+    // Update storage to mark verified
+    const storageKey = `project-exchange-${pendingDomain}`;
+    const existing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+    localStorage.setItem(storageKey, JSON.stringify({ ...existing, isVerified: true }));
+    setProjects((prev) => prev.map((p) =>
+      p.domain === pendingDomain ? { ...p, exchangeStatus: "Active" } : p
+    ));
+    setAddVerifySuccess(true);
+  }
+
+  // ── Derived verify strings ───────────────────────────────────────────────────
+  const verifyMetaTag = `<meta name="linkade-site-verification" content="${addVerifyToken}" />`;
+  const verifyDnsTxt = `linkade-site-verification=${addVerifyToken}`;
+
+  function handleVerifyCopy(text: string, key: string) {
+    navigator.clipboard.writeText(text);
+    setAddVerifyCopied(key);
+    setTimeout(() => setAddVerifyCopied(null), 1500);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <AppLayout title="My Projects" icon={<Briefcase className="h-5 w-5" />}>
@@ -139,10 +339,7 @@ export default function MyProjects() {
                 <strong> Respond to requests within 48 hours to keep your score healthy.</strong>
               </p>
             </div>
-            <button
-              onClick={dismissRespBanner}
-              className="shrink-0 text-blue-400 hover:text-blue-700 transition-colors"
-            >
+            <button onClick={dismissRespBanner} className="shrink-0 text-blue-400 hover:text-blue-700 transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -190,15 +387,14 @@ export default function MyProjects() {
         ))}
       </div>
 
-      {/* Add Project Modal */}
-      <Dialog open={addOpen} onOpenChange={(open) => { if (!open) setAddOpen(false); }}>
+      {/* ── Add Project Modal — Step 1: Name + Domain ── */}
+      <Dialog open={addOpen && addStep === 1} onOpenChange={(open) => { if (!open) setAddOpen(false); }}>
         <DialogContent className="w-[460px]">
           <DialogHeader>
             <DialogTitle>Add New Project</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 mt-1">
-            {/* Project Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
               <input
@@ -210,7 +406,6 @@ export default function MyProjects() {
               {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
             </div>
 
-            {/* Domain */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Domain</label>
               <input
@@ -221,31 +416,9 @@ export default function MyProjects() {
               />
               {errors.domain && <p className="mt-1 text-xs text-red-500">{errors.domain}</p>}
             </div>
-
-            {/* Exchange toggle */}
-            <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Available for Exchange</p>
-                <p className="text-xs text-gray-400 mt-0.5">Allow others to request backlinks from this site</p>
-              </div>
-              <button
-                role="switch"
-                aria-checked={newExchange}
-                onClick={() => setNewExchange((v) => !v)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-                  newExchange ? "bg-green-500" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 mt-0.5 ${
-                    newExchange ? "translate-x-5" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-            </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-5">
             <button
               onClick={() => setAddOpen(false)}
               className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
@@ -253,16 +426,337 @@ export default function MyProjects() {
               Cancel
             </button>
             <button
-              onClick={handleAddProject}
-              className="rounded-md bg-black px-4 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+              onClick={handleStep1Next}
+              disabled={!newName.trim() || !newDomain.trim()}
+              className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Add Project
+              Next →
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Notes Modal */}
+      {/* ── Add Project Modal — Step 2: Category + Tags + Exchange ── */}
+      <Dialog open={addOpen && addStep === 2} onOpenChange={(open) => { if (!open) setAddOpen(false); }}>
+        <DialogContent className="w-[500px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure Project</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">{newName} · {newDomain.replace(/^https?:\/\//, "")}</p>
+
+          {analyzing ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                <span className="text-sm font-medium text-gray-700">Analyzing your website...</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Detecting category and suggesting tags</p>
+              <div className="flex gap-1 mt-1">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-2 w-2 rounded-full bg-primary/60 animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5 mt-2">
+              {/* Detected category */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">AI Detected Category</span>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-sm font-medium text-primary">
+                  {detectedCategory}
+                </span>
+              </div>
+
+              {/* Tag selection */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggested Tags</span>
+                  </div>
+                  <span className={`text-xs font-medium ${selectedTags.length >= 5 ? "text-amber-500" : "text-muted-foreground"}`}>
+                    {selectedTags.length}/5 selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedTags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    const isDisabled = !isSelected && selectedTags.length >= 5;
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        disabled={isDisabled}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary text-white"
+                            : isDisabled
+                            ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-primary/50 hover:text-primary"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-2.5 w-2.5" />}
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">Select up to 5 tags that best describe your site. These help match relevant backlink opportunities.</p>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-100" />
+
+              {/* Exchange toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Available for Exchange</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Allow others to request backlinks from this site</p>
+                </div>
+                <MiniToggle checked={newExchange} onChange={() => setNewExchange((v) => !v)} />
+              </div>
+            </div>
+          )}
+
+          {!analyzing && (
+            <div className="flex justify-between gap-2 mt-5">
+              <button
+                onClick={() => setAddStep(1)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAddOpen(false)}
+                  className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddProject}
+                  className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+                >
+                  Add Project
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Exchange Options Modal ── */}
+      <Dialog open={exchangeModalOpen} onOpenChange={(open) => { if (!open) setExchangeModalOpen(false); }}>
+        <DialogContent className="w-[520px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Exchange Options — {pendingDomain}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 -mt-1">Choose what types of exchange you want to accept for this site.</p>
+
+          <div className="space-y-3 mt-3">
+            {/* Link Insertion */}
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Available for Link Insertion</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Accept requests to insert links into existing content</p>
+                </div>
+                <MiniToggle checked={draftLI} onChange={() => setDraftLI((v) => !v)} />
+              </div>
+              {draftLI && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-2 block">Guidelines (optional)</label>
+                  <PointsInput
+                    points={draftLIGuidelines}
+                    onChange={setDraftLIGuidelines}
+                    hint="e.g. anchor text rules, link placement, niche restrictions, link type..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Guest Post */}
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Available for Guest Post</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Accept requests to publish guest articles on this site</p>
+                </div>
+                <MiniToggle checked={draftGP} onChange={() => setDraftGP((v) => !v)} />
+              </div>
+              {draftGP && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-2 block">Guidelines (optional)</label>
+                  <PointsInput
+                    points={draftGPGuidelines}
+                    onChange={setDraftGPGuidelines}
+                    hint="e.g. minimum/maximum word count, AI score requirement, topic restrictions, original content only..."
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={handleExchangeVerifyLater}
+              className="rounded-md border border-border px-5 py-2 text-sm hover:bg-muted transition-colors"
+            >
+              Verify Later
+            </button>
+            <button
+              onClick={handleExchangeVerifyNow}
+              className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+            >
+              Verify Now
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Verify Now Modal (from exchange options) ── */}
+      <Dialog open={addVerifyOpen} onOpenChange={(open) => { if (!open) setAddVerifyOpen(false); }}>
+        <DialogContent className="w-[560px] max-h-[90vh] overflow-y-auto">
+          {addVerifySuccess ? (
+            <div className="flex flex-col items-center py-8 text-center gap-3">
+              <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
+                <Check className="h-8 w-8 text-green-500" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Verification Successful!</h2>
+              <p className="text-sm text-gray-500 max-w-sm">
+                Your ownership of <span className="font-medium">{pendingDomain}</span> has been confirmed. Your site is now active in the exchange.
+              </p>
+              <button
+                onClick={() => setAddVerifyOpen(false)}
+                className="mt-2 rounded-md bg-black px-6 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Verify Website Ownership</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-gray-600 leading-relaxed mt-1">
+                Confirm you own <span className="font-medium">{pendingDomain}</span> by adding one of the verification methods below.
+              </p>
+
+              {/* Method tabs */}
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                {(["meta", "dns"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setAddVerifyMethod(m)}
+                    className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                      addVerifyMethod === m ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    <span className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${addVerifyMethod === m ? "border-primary" : "border-gray-300"}`}>
+                      {addVerifyMethod === m && <span className="h-2 w-2 rounded-full bg-primary" />}
+                    </span>
+                    {m === "meta" ? "HTML Meta Tag" : "DNS TXT Record"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4 mt-4">
+                {addVerifyMethod === "meta" ? (
+                  <div>
+                    <p className="text-sm text-gray-700 font-medium mb-2">
+                      Add this tag inside the <code className="text-xs bg-muted px-1 py-0.5 rounded">&lt;head&gt;</code> of your homepage:
+                    </p>
+                    <div className="relative rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 pr-12">
+                      <code className="text-xs text-gray-700 break-all">{verifyMetaTag}</code>
+                      <button
+                        onClick={() => handleVerifyCopy(verifyMetaTag, "meta")}
+                        className="absolute top-2 right-2 p-1.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        {addVerifyCopied === "meta" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-700 font-medium mb-2">Add a TXT record to your domain's DNS settings:</p>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                      <div className="grid grid-cols-3 gap-px bg-border">
+                        {["Type", "Name", "Value"].map((h) => (
+                          <div key={h} className="bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground">{h}</div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-3 gap-px bg-border">
+                        <div className="bg-card px-3 py-2 text-xs font-mono">TXT</div>
+                        <div className="bg-card px-3 py-2 text-xs font-mono">@</div>
+                        <div className="bg-card px-3 py-2 flex items-center gap-2">
+                          <span className="text-xs font-mono break-all flex-1">{verifyDnsTxt}</span>
+                          <button onClick={() => handleVerifyCopy(verifyDnsTxt, "dns")}>
+                            {addVerifyCopied === "dns" ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-gray-400" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => setAddVerifyOpen(false)}
+                  className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleVerifySubmit}
+                  className="rounded-md bg-primary px-5 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+                >
+                  Verify Now
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Verify Later Info Popup ── */}
+      <Dialog open={infoPopupOpen} onOpenChange={setInfoPopupOpen}>
+        <DialogContent className="w-[420px]">
+          <button
+            onClick={() => setInfoPopupOpen(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col items-center text-center gap-3 py-2">
+            <div className="h-12 w-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+              <Info className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-semibold text-gray-900">Verification Required</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Your site <span className="font-medium text-gray-700">{pendingDomain}</span> won't be visible in the exchange and won't be available to receive requests until you verify ownership.
+              </p>
+              <p className="text-xs text-gray-400 mt-1">You can verify anytime from the project card settings.</p>
+            </div>
+            <button
+              onClick={() => setInfoPopupOpen(false)}
+              className="mt-1 rounded-md bg-black px-6 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Notes Modal ── */}
       <Dialog open={!!activeProject} onOpenChange={(open) => { if (!open) setActiveProject(null); }}>
         <DialogContent className="w-[500px]">
           <DialogHeader>

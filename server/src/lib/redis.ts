@@ -1,4 +1,4 @@
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 
 function createRedisClient() {
   const url = process.env.REDIS_URL;
@@ -10,7 +10,7 @@ function createRedisClient() {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
   });
-  client.on("error", (err) => {
+  client.on("error", (err: Error) => {
     console.error("[Redis] connection error:", err.message);
   });
   return client;

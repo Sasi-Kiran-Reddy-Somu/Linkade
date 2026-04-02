@@ -366,6 +366,7 @@ const STATS = [
 function Stats({ theme }: { theme: Theme }) {
   const { ref, visible } = useReveal();
   const t = THEMES[theme];
+  const goToApp = useGoToApp();
   return (
     <section id="stats" className="py-28 relative" style={{ background: t.bgAlt }}>
       <div className="absolute top-0 left-0 w-full h-px"

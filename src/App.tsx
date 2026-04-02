@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import LandingPage from "./pages/LandingPage";
 import MyProjects from "./pages/MyProjects";
 import Dashboard from "./pages/Dashboard";
 import AddProject from "./pages/AddProject";
@@ -33,7 +34,8 @@ const App = () => (
         <OnboardingFlow />
         <Routes>
 
-          <Route path="/" element={<MyProjects />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/app" element={<MyProjects />} />
 
           {/* Existing Pages */}
           <Route path="/dashboard" element={<Dashboard />} />

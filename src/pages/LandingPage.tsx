@@ -255,7 +255,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Link Exchange",
-    desc: "Connect with website owners in your niche and swap high-quality backlinks — no money, just mutual value.",
+    desc: "Browse a directory of verified publishers, filter by niche, DR, and availability, and send Link Insertion or Guest Post requests — tracked through a structured pipeline.",
     color: "#8b5cf6",
   },
   {
@@ -265,7 +265,7 @@ const FEATURES = [
       </svg>
     ),
     title: "AI Niche Matching",
-    desc: "Our AI scans your site and surfaces the most relevant link partners automatically — no manual outreach.",
+    desc: "Our AI scans your site and surfaces the most relevant publishers automatically — matching you by niche, category, and content relevance.",
     color: "#6366f1",
   },
   {

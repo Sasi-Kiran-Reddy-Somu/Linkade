@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { Briefcase, Search, Activity, X, Sparkles, Plus, Check, Copy, Info } from "lucide-react";
 import ProjectCard from "@/components/ProjectCard";
 import { useState, useEffect } from "react";
@@ -325,6 +326,7 @@ export default function MyProjects() {
 
   return (
     <AppLayout title="My Projects" icon={<Briefcase className="h-5 w-5" />}>
+      <OnboardingFlow />
       <div className="space-y-6">
 
         {/* Responsiveness score education banner */}

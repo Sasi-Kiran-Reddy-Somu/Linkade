@@ -21,7 +21,6 @@ import AddCredits from "./pages/AddCredits";
 import Upgrade from "./pages/Upgrade";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import { OnboardingFlow } from "./components/OnboardingFlow";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +30,6 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <OnboardingFlow />
         <Routes>
 
           <Route path="/" element={<LandingPage />} />

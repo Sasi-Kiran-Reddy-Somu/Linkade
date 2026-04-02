@@ -23,6 +23,7 @@ app.use("*", logger());
 app.use("*", prettyJSON());
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL_2,
   "http://localhost:5173",
   "http://localhost:8080",
 ].filter(Boolean) as string[];

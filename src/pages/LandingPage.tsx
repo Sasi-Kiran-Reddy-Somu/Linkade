@@ -227,7 +227,7 @@ function Hero({ theme }: { theme: Theme }) {
         {/* Sub */}
         <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: t.subtext }}>
           Exchange links with vetted publishers, track SEO growth over time,
-          and let AI match you to the perfect niche — all in one platform.
+          and let AI match you to the perfect niche. All in one platform.
         </p>
 
         {/* CTAs */}
@@ -267,7 +267,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Link Exchange",
-    desc: "Browse a directory of verified publishers, filter by niche, DR, and availability, and send Link Insertion or Guest Post requests — tracked through a structured pipeline.",
+    desc: "Browse verified publishers, filter by niche, DR, and availability, and send Link Insertion or Guest Post requests through a structured pipeline.",
     color: "#8b5cf6",
   },
   {
@@ -277,7 +277,7 @@ const FEATURES = [
       </svg>
     ),
     title: "AI Niche Matching",
-    desc: "Our AI scans your site and surfaces the most relevant publishers automatically — matching you by niche, category, and content relevance.",
+    desc: "Our AI scans your site and surfaces the most relevant publishers automatically, matched by niche, category, and content relevance.",
     color: "#6366f1",
   },
   {
@@ -287,7 +287,7 @@ const FEATURES = [
       </svg>
     ),
     title: "SEO Change Tracking",
-    desc: "After adding a project, track time-filtered SEO metric changes — see exactly how your rankings, DR, and traffic shift over any period.",
+    desc: "After adding a project, track time-filtered SEO metric changes and see exactly how your rankings, DR, and traffic shift over any period.",
     color: "#a78bfa",
   },
   {

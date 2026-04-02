@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // ── Scroll-reveal hook ────────────────────────────────────────────────────────
 function useReveal() {
@@ -15,6 +16,15 @@ function useReveal() {
     return () => obs.disconnect();
   }, []);
   return { ref, visible };
+}
+
+// ── Auth nav helper ───────────────────────────────────────────────────────────
+function useGoToApp() {
+  const navigate = useNavigate();
+  return () => {
+    localStorage.removeItem("onboarding-complete");
+    navigate("/app");
+  };
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -41,6 +51,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = THEMES[theme];
+  const goToApp = useGoToApp();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -109,14 +120,14 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
             )}
           </button>
 
-          <a href="/login"
+          <button onClick={goToApp}
             className="text-sm font-medium transition-colors duration-200 px-4 py-2 rounded-lg"
             style={{ color: t.subtext }}
             onMouseEnter={e => (e.currentTarget.style.color = t.text)}
             onMouseLeave={e => (e.currentTarget.style.color = t.subtext)}>
             Sign In
-          </a>
-          <a href="/signup"
+          </button>
+          <button onClick={goToApp}
             className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 hover:scale-105"
             style={{
               background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
@@ -124,7 +135,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
               boxShadow: "0 0 20px rgba(139,92,246,0.3)",
             }}>
             Get Started
-          </a>
+          </button>
         </div>
 
         {/* Mobile menu button */}
@@ -152,9 +163,9 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
                 : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
               }
             </button>
-            <a href="/login" className="flex-1 text-center text-sm py-2 rounded-lg" style={{ border: `1px solid ${t.border}`, color: t.text }}>Sign In</a>
-            <a href="/signup" className="flex-1 text-center text-sm text-white font-semibold py-2 rounded-lg"
-              style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>Get Started</a>
+            <button onClick={goToApp} className="flex-1 text-center text-sm py-2 rounded-lg" style={{ border: `1px solid ${t.border}`, color: t.text }}>Sign In</button>
+            <button onClick={goToApp} className="flex-1 text-center text-sm text-white font-semibold py-2 rounded-lg"
+              style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>Get Started</button>
           </div>
         </div>
       )}
@@ -165,6 +176,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function Hero({ theme }: { theme: Theme }) {
   const t = THEMES[theme];
+  const goToApp = useGoToApp();
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden"
       style={{ background: t.bg }}>
@@ -220,14 +232,14 @@ function Hero({ theme }: { theme: Theme }) {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a href="/signup"
+          <button onClick={goToApp}
             className="px-8 py-3.5 rounded-xl text-white font-semibold text-base transition-all duration-300 hover:scale-105"
             style={{
               background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
               boxShadow: "0 0 40px rgba(139,92,246,0.35), 0 2px 20px rgba(0,0,0,0.4)",
             }}>
             Start for free →
-          </a>
+          </button>
           <button
             onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
             className="px-8 py-3.5 rounded-xl font-semibold text-base transition-all duration-200 hover:bg-violet-500/10"
@@ -405,7 +417,7 @@ function Stats({ theme }: { theme: Theme }) {
           <p className="text-lg mb-6" style={{ color: t.subtext }}>
             Join thousands of SEOs building smarter, faster.
           </p>
-          <a href="/signup"
+          <button onClick={goToApp}
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-white font-semibold transition-all duration-300 hover:scale-105"
             style={{
               background: "linear-gradient(135deg, #8b5cf6, #6366f1)",
@@ -415,7 +427,7 @@ function Stats({ theme }: { theme: Theme }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
-          </a>
+          </button>
         </div>
       </div>
     </section>

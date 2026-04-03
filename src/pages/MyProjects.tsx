@@ -46,14 +46,29 @@ async function detectCategoryTags(domain: string): Promise<{ category: string; t
   // Local: /api/ai/detect-category (Vite proxy strips /api → localhost:3000/ai/detect-category)
   // Production: https://backend.railway.app/ai/detect-category
   const url = API_BASE ? `${API_BASE}/ai/detect-category` : `/api/ai/detect-category`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain }),
-  });
-  if (!res.ok) throw new Error("Detection failed");
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    });
+  } catch (err) {
+    throw new Error(`Network error — could not reach backend (${url}). Check VITE_API_URL and CORS settings.`);
+  }
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.json()).error ?? ""; } catch { /* ignore */ }
+    throw new Error(`Backend returned ${res.status}: ${detail || res.statusText}`);
+  }
   return res.json();
 }
+
+const MANUAL_CATEGORIES = [
+  "Technology", "Finance", "Health & Fitness", "Marketing & SEO", "Travel",
+  "Food & Lifestyle", "Education", "E-commerce", "Gaming",
+  "Business & Entrepreneurship", "Real Estate", "Legal", "Parenting", "Sustainability",
+];
 
 function generateToken() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -146,6 +161,7 @@ export default function MyProjects() {
   const [errors, setErrors] = useState<{ name?: string; domain?: string }>({});
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState(false);
+  const [analyzeErrorMsg, setAnalyzeErrorMsg] = useState("");
   const [detectedCategory, setDetectedCategory] = useState("");
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -204,6 +220,7 @@ export default function MyProjects() {
     setSuggestedTags([]);
     setAnalyzing(false);
     setAnalyzeError(false);
+    setAnalyzeErrorMsg("");
     setAddOpen(true);
   }
 
@@ -215,6 +232,7 @@ export default function MyProjects() {
 
     setAnalyzing(true);
     setAnalyzeError(false);
+    setAnalyzeErrorMsg("");
     setAddStep(2);
     const cleanDomain = newDomain.trim().replace(/^https?:\/\//, "");
     try {
@@ -224,6 +242,7 @@ export default function MyProjects() {
     } catch (err) {
       console.error("[detect-category]", err);
       setAnalyzeError(true);
+      setAnalyzeErrorMsg(err instanceof Error ? err.message : String(err));
       setDetectedCategory("");
       setSuggestedTags([]);
     } finally {
@@ -240,6 +259,7 @@ export default function MyProjects() {
   }
 
   function handleAddProject() {
+    if (!detectedCategory) return; // guard: category is required
     const domain = newDomain.trim().replace(/^https?:\/\//, "");
     setProjects((prev) => [
       ...prev,
@@ -463,20 +483,33 @@ export default function MyProjects() {
               </div>
             </div>
           ) : analyzeError ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-              <div className="h-10 w-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center">
-                <X className="h-5 w-5 text-red-400" />
+            <div className="space-y-4 mt-2">
+              <div className="flex flex-col items-center gap-2 text-center py-4">
+                <div className="h-10 w-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center">
+                  <X className="h-5 w-5 text-red-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">AI detection failed</p>
+                <p className="text-xs text-muted-foreground max-w-xs">{analyzeErrorMsg || "Could not reach the AI service."}</p>
+                <button
+                  onClick={() => { setAddStep(1); setAnalyzeError(false); setAnalyzeErrorMsg(""); }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  ← Go back and try again
+                </button>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700">Could not reach AI service</p>
-                <p className="text-xs text-muted-foreground mt-1">Make sure the backend server is running with a valid OpenAI API key.</p>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Select category manually to continue</p>
+                <select
+                  value={detectedCategory}
+                  onChange={(e) => { setDetectedCategory(e.target.value); setSuggestedTags([]); }}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">-- Choose a category --</option>
+                  {MANUAL_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
-              <button
-                onClick={() => { setAddStep(1); setAnalyzeError(false); }}
-                className="text-xs text-primary hover:underline"
-              >
-                ← Go back and try again
-              </button>
             </div>
           ) : (
             <div className="space-y-5 mt-2">
@@ -542,7 +575,7 @@ export default function MyProjects() {
             </div>
           )}
 
-          {!analyzing && !analyzeError && (
+          {!analyzing && (
             <div className="flex justify-between gap-2 mt-5">
               <button
                 onClick={() => setAddStep(1)}
@@ -559,7 +592,8 @@ export default function MyProjects() {
                 </button>
                 <button
                   onClick={handleAddProject}
-                  className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors"
+                  disabled={!detectedCategory}
+                  className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Add Project
                 </button>

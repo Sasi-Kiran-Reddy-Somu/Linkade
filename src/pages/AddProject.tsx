@@ -310,7 +310,7 @@ export default function AddProject() {
                 <Plus className="h-4 w-4" /> Add Another Project
               </button>
               <button
-                onClick={() => navigate("/projects")}
+                onClick={() => navigate("/app")}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Go to My Projects

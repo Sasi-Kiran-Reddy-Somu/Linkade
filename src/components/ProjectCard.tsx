@@ -309,7 +309,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                 )}
                 <div className="border-t border-gray-100 my-1" />
                 <button
-                  onClick={() => { setSettingsOpen(false); onRemove?.(); }}
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    if (window.confirm(`Remove "${name}"?\n\nIf you add this project again, you will need to re-verify ownership of ${domain}.`)) {
+                      onRemove?.();
+                    }
+                  }}
                   className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
                 >
                   Remove Project

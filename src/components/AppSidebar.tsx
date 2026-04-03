@@ -100,26 +100,18 @@ export default function AppSidebar() {
             </div>
           </div>
 
-          {/* Credits bar */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Zap className="h-3 w-3 text-amber-500" />
-                <span>{credits} credits left</span>
-              </div>
-              <button
-                onClick={() => navigate("/credits/add")}
-                className="text-[10px] font-semibold text-primary hover:underline"
-              >
-                + Add
-              </button>
+          {/* Credits */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Zap className="h-3 w-3 text-amber-500" />
+              <span>{credits} credits left</span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-amber-400 transition-all"
-                style={{ width: `${Math.min((credits / 10) * 100, 100)}%` }}
-              />
-            </div>
+            <button
+              onClick={() => navigate("/credits/add")}
+              className="text-[10px] font-semibold text-primary hover:underline"
+            >
+              + Add
+            </button>
           </div>
 
           <button

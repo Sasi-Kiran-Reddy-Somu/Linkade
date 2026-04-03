@@ -18,13 +18,20 @@ function useReveal() {
   return { ref, visible };
 }
 
-// ── Auth nav helper ───────────────────────────────────────────────────────────
+// ── Auth nav helpers ──────────────────────────────────────────────────────────
 function useGoToApp() {
   const navigate = useNavigate();
+  // Sign Up: clear onboarding so new users see the flow
   return () => {
     localStorage.removeItem("onboarding-complete");
     navigate("/app");
   };
+}
+
+function useSignIn() {
+  const navigate = useNavigate();
+  // Sign In: preserve onboarding-complete so returning users skip it
+  return () => navigate("/app");
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -52,6 +59,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = THEMES[theme];
   const goToApp = useGoToApp();
+  const signIn = useSignIn();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -120,7 +128,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
             )}
           </button>
 
-          <button onClick={goToApp}
+          <button onClick={signIn}
             className="text-sm font-medium transition-colors duration-200 px-4 py-2 rounded-lg"
             style={{ color: t.subtext }}
             onMouseEnter={e => (e.currentTarget.style.color = t.text)}
@@ -163,7 +171,7 @@ function Navbar({ theme, toggleTheme }: { theme: Theme; toggleTheme: () => void 
                 : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
               }
             </button>
-            <button onClick={goToApp} className="flex-1 text-center text-sm py-2 rounded-lg" style={{ border: `1px solid ${t.border}`, color: t.text }}>Sign In</button>
+            <button onClick={signIn} className="flex-1 text-center text-sm py-2 rounded-lg" style={{ border: `1px solid ${t.border}`, color: t.text }}>Sign In</button>
             <button onClick={goToApp} className="flex-1 text-center text-sm text-white font-semibold py-2 rounded-lg"
               style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>Get Started</button>
           </div>

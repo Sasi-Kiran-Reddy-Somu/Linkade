@@ -90,14 +90,19 @@ Rules:
 Return format:
 {"category":"<category>","tags":["tag1","tag2","tag3","tag4","tag5","tag6","tag7","tag8","tag9","tag10"],"confidence":<0-100>}`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-      max_tokens: 200,
-    });
-
-    const raw = response.choices[0]?.message?.content?.trim() ?? "";
+    let raw = "";
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+        max_tokens: 200,
+      });
+      raw = response.choices[0]?.message?.content?.trim() ?? "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return c.json({ error: "OpenAI API call failed", detail: msg }, 502);
+    }
 
     let parsed: { category: string; tags: string[]; confidence: number };
     try {

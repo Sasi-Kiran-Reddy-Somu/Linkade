@@ -595,7 +595,7 @@ export default function MyProjects() {
                   disabled={!detectedCategory}
                   className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-black/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Add Project
+                  Next →
                 </button>
               </div>
             </div>

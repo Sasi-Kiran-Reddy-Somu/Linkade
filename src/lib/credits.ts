@@ -4,36 +4,43 @@
  *
  * Incoming (you publish) → you EARN these credits when marked live
  * Outgoing (you request) → this is the credit cost to send the request
+ *
+ * Formula (returns 1–15):
+ *   traffic_score = (log10(min(traffic, 1_000_000) + 1) / log10(1_000_001)) ^ 1.27
+ *   dr_score      = (dr / 100) ^ 0.17 × e ^ (0.01 × (dr - 100))
+ *   tf_score      = (tf / 100) ^ 0.1  × e ^ (0.007 × (tf - 100))
+ *   Edge case: if any input ≤ 0 its individual score is 0
+ *   composite     = traffic_score × 35 + dr_score × 30 + tf_score × 35
+ *   credits       = clamp(round(1 + (composite / 100) × 14), 1, 15)
  */
 export function calcLinkCredits(
   dr: number,
-  da: number,
+  _da: number,
   traffic: number,
   tf: number,
-  spamScore: number,
+  _spamScore: number,
 ): number {
-  const drPart = Math.floor(dr * 0.2);        // DR 50 → 10, DR 80 → 16
-  const daPart = Math.floor(da * 0.15);       // DA 50 → 7,  DA 85 → 12
+  const trafficScore =
+    traffic <= 0
+      ? 0
+      : Math.pow(
+          Math.log10(Math.min(traffic, 1_000_000) + 1) / Math.log10(1_000_001),
+          1.27,
+        );
 
-  const trafficPart =
-    traffic >= 10_000_000 ? 18 :
-    traffic >= 2_000_000  ? 12 :
-    traffic >= 500_000    ? 8  :
-    traffic >= 150_000    ? 5  :
-    traffic >= 50_000     ? 3  :
-    traffic >= 7_000      ? 2  : 1;
+  const drScore =
+    dr <= 0
+      ? 0
+      : Math.pow(dr / 100, 0.17) * Math.exp(0.01 * (dr - 100));
 
-  const tfPart = Math.floor(tf * 0.1);        // TF 30 → 3, TF 65 → 6
+  const tfScore =
+    tf <= 0
+      ? 0
+      : Math.pow(tf / 100, 0.1) * Math.exp(0.007 * (tf - 100));
 
-  const spamPenalty =
-    spamScore >= 15 ? 6 :
-    spamScore >= 8  ? 3 :
-    spamScore >= 4  ? 1 : 0;
-
-  // Raw score range across the dataset: ~1 (worst) to ~60 (best)
-  const raw = Math.max(1, drPart + daPart + trafficPart + tfPart - spamPenalty);
-  // Normalize to 1–10 scale: worst site = 1 credit, best site = 10 credits
-  return Math.max(1, Math.min(10, Math.round(1 + (raw - 1) / 59 * 9)));
+  const composite = trafficScore * 35 + drScore * 30 + tfScore * 35;
+  const normalised = composite / 100;
+  return Math.max(1, Math.min(15, Math.round(1 + normalised * 14)));
 }
 
 // ── Account credits (localStorage) ────────────────────────────────────────────

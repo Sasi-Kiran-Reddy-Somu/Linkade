@@ -15,6 +15,8 @@ const createSchema = z.object({
   name:            z.string().min(1),
   domain:          z.string().min(3),
   exchangeEnabled: z.boolean().optional().default(false),
+  category:        z.string().optional(),
+  tags:            z.array(z.string()).optional(),
 });
 
 const updateSchema = z.object({
@@ -36,13 +38,15 @@ app.get("/", async (c) => {
 // POST /projects
 app.post("/", zValidator("json", createSchema), async (c) => {
   const userId = c.get("userId");
-  const { name, domain, exchangeEnabled } = c.req.valid("json");
+  const { name, domain, exchangeEnabled, category, tags } = c.req.valid("json");
 
   const clean = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
 
   const [project] = await db.insert(projects).values({
     userId, name, domain: clean,
     exchangeEnabled,
+    category,
+    tags,
     verificationToken: randomUUID(),
   }).returning();
 

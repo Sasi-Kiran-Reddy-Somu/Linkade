@@ -14,6 +14,8 @@ export const projects = pgTable("projects", {
   guidelinesLinkInsertion: text("guidelines_link_insertion"),
   guidelinesGuestPost:     text("guidelines_guest_post"),
   notes:                   text("notes"),
+  category:                text("category"),
+  tags:                    text("tags").array(),
   createdAt:               timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt:               timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }, (t) => [unique("uq_user_domain").on(t.userId, t.domain)]);

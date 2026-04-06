@@ -61,6 +61,27 @@ export function isTATExpired(id: string, createdAt: string): boolean {
   return new Date() > deadline;
 }
 
+// ── Delay notes (localStorage, prototype) ────────────────────────────────────
+
+export interface DelayNote {
+  id: string;
+  fromSide: "publisher" | "requester";
+  note: string;
+  sentAt: string;
+}
+
+export function getDelayNotes(requestId: string): DelayNote[] {
+  try {
+    return JSON.parse(localStorage.getItem(`req-delay-notes-${requestId}`) ?? "[]");
+  } catch { return []; }
+}
+
+export function addDelayNote(requestId: string, fromSide: "publisher" | "requester", note: string): void {
+  const notes = getDelayNotes(requestId);
+  notes.push({ id: crypto.randomUUID(), fromSide, note, sentAt: new Date().toISOString() });
+  localStorage.setItem(`req-delay-notes-${requestId}`, JSON.stringify(notes));
+}
+
 export function fmtNum(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;

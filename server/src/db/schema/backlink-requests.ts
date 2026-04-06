@@ -15,6 +15,7 @@ export const backlinkRequests = pgTable("backlink_requests", {
   title:           text("title"),                     // Guest Post only
   description:     text("description").notNull(),
   tatDays:         integer("tat_days"),
+  acceptedAt:      timestamp("accepted_at", { withTimezone: true }),
   creditsCost:     integer("credits_cost").notNull(),
   creditsEarned:   integer("credits_earned").notNull(),
   liveVerifiedAt:  timestamp("live_verified_at", { withTimezone: true }),

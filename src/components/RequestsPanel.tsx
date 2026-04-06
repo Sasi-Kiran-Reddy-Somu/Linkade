@@ -4,8 +4,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   BacklinkRequest, RequestStatus, getRequestStatus, setRequestStatus,
   setRequestTAT, setRequestAcceptedAt, getAllRequests, getProjectRequests,
+  isTATExpired, getRequestTAT, getDelayNotes, addDelayNote, DelayNote,
 } from "@/data/requests";
-import { ExternalLink, CheckCircle, Link2, FileText, Activity, Zap, Loader2, Search, SlidersHorizontal, ChevronDown, ArrowUp, ArrowDown, X, Download } from "lucide-react";
+import { ExternalLink, CheckCircle, Link2, FileText, Activity, Zap, Loader2, Search, SlidersHorizontal, ChevronDown, ArrowUp, ArrowDown, X, Download, AlertTriangle, MessageSquare, Send } from "lucide-react";
 import { calcLinkCredits, addAccountCredits } from "@/lib/credits";
 import { MetricInfo } from "./MetricInfo";
 
@@ -233,6 +234,21 @@ function ShowDetailsDialog({
   const [confirmAccept, setConfirmAccept] = useState(false);
   const [tatDays, setTatDays] = useState("7");
   const [liveState, setLiveState] = useState<"idle" | "verifying" | "verified">("idle");
+  const [delayNotes, setDelayNotes] = useState<DelayNote[]>(() => getDelayNotes(request.id));
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [noteText, setNoteText] = useState("");
+
+  const isOverdue = status === "Accepted" && isTATExpired(request.id, request.createdAt);
+  const mySide = isIncoming ? "publisher" : "requester";
+
+  function handleSendNote() {
+    const trimmed = noteText.trim();
+    if (!trimmed) return;
+    addDelayNote(request.id, mySide, trimmed);
+    setDelayNotes(getDelayNotes(request.id));
+    setNoteText("");
+    setShowNoteInput(false);
+  }
 
   const creditsValue = calcLinkCredits(request.dr, request.da, request.traffic, request.tf, request.spamScore);
 
@@ -406,6 +422,62 @@ function ShowDetailsDialog({
               <span key={c} className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{c}</span>
             ))}
           </div>
+
+          {/* TAT overdue banner */}
+          {isOverdue && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800">TAT deadline passed</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  The agreed turnaround time has elapsed. You can send a note to the {isIncoming ? "requester" : "publisher"} explaining the situation.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Delay notes thread */}
+          {delayNotes.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" /> Delay Notes
+              </p>
+              {delayNotes.map((n) => {
+                const isMine = n.fromSide === mySide;
+                return (
+                  <div key={n.id} className={`rounded-lg px-3 py-2.5 text-sm leading-relaxed ${isMine ? "bg-blue-50 border border-blue-100 text-blue-900 ml-6" : "bg-gray-50 border border-gray-100 text-gray-800 mr-6"}`}>
+                    <p className="text-[10px] font-semibold mb-1 text-muted-foreground uppercase tracking-wide">
+                      {isMine ? "You" : (isIncoming ? "Requester" : "Publisher")} &middot; {new Date(n.sentAt).toLocaleDateString()}
+                    </p>
+                    {n.note}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Send note input */}
+          {showNoteInput && (
+            <div className="space-y-2">
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder={`Add a note for the ${isIncoming ? "requester" : "publisher"}…`}
+                rows={3}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => { setShowNoteInput(false); setNoteText(""); }}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleSendNote} disabled={!noteText.trim()}
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1">
+                  <Send className="h-3 w-3" /> Send Note
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Sticky footer — all action states ── */}
@@ -485,6 +557,12 @@ function ShowDetailsDialog({
                 </span>
               </div>
               <div className="flex justify-end gap-2">
+                {isOverdue && !showNoteInput && (
+                  <button onClick={() => setShowNoteInput(true)}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Send delay note
+                  </button>
+                )}
                 <button onClick={handleClose} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors">
                   Not Yet
                 </button>
@@ -540,6 +618,12 @@ function ShowDetailsDialog({
           {/* OUTGOING: read-only — Mark as Live if Accepted */}
           {!isIncoming && (
             <div className="flex justify-end gap-2">
+              {status === "Accepted" && liveState === "idle" && isOverdue && !showNoteInput && (
+                <button onClick={() => setShowNoteInput(true)}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5" /> Send delay note
+                </button>
+              )}
               {status === "Accepted" && liveState === "idle" && (
                 <button
                   onClick={handleMarkLive}
@@ -643,6 +727,7 @@ function RequestRow({ req, status, onShow }: { req: BacklinkRequest; status: Req
   const credits = calcLinkCredits(req.dr, req.da, req.traffic, req.tf, req.spamScore);
   const resp = domainResponsiveness(req.externalDomain);
   const respColor = resp >= 75 ? "text-green-600" : resp >= 50 ? "text-amber-500" : "text-red-500";
+  const isOverdue = status === "Accepted" && isTATExpired(req.id, req.createdAt);
 
   const metrics = [
     { label: "DR",      value: req.dr,              cls: "w-12" },
@@ -689,8 +774,13 @@ function RequestRow({ req, status, onShow }: { req: BacklinkRequest; status: Req
           <p className={`text-sm font-semibold text-foreground ${m.color ?? ""}`}>{m.value}</p>
         </div>
       ))}
-      <div className="w-28 shrink-0 flex justify-center">
+      <div className="w-28 shrink-0 flex flex-col items-center gap-1">
         <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_STYLES[status]}`}>{status}</span>
+        {isOverdue && (
+          <span className="flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+            <AlertTriangle className="h-2.5 w-2.5" /> TAT overdue
+          </span>
+        )}
       </div>
       <div className="w-20 shrink-0 flex justify-center">
         <span className={`flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${isIncoming ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>

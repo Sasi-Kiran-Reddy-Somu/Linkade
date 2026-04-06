@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, or, inArray, desc, asc, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { backlinkRequests, users, projects, websites, websiteMetrics, creditTransactions, linkVerifications } from "../db/schema/index.js";
+import { backlinkRequests, users, projects, websites, websiteMetrics, creditTransactions, linkVerifications, notifications, requestDelayNotes } from "../db/schema/index.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { calcLinkCredits } from "../lib/credits.js";
 import { jobs } from "../lib/queue.js";
@@ -196,8 +196,14 @@ app.patch("/:id/status", zValidator("json", statusSchema), async (c) => {
   if (!request) return c.json({ error: "Not found" }, 404);
   if (!domains.includes(request.publisherDomain)) return c.json({ error: "Forbidden — publishers only" }, 403);
 
+  const now = new Date();
   const [updated] = await db.update(backlinkRequests)
-    .set({ status, tatDays: status === "Accepted" ? tatDays : request.tatDays, updatedAt: new Date() })
+    .set({
+      status,
+      tatDays: status === "Accepted" ? tatDays : request.tatDays,
+      acceptedAt: status === "Accepted" ? now : request.acceptedAt,
+      updatedAt: now,
+    })
     .where(eq(backlinkRequests.id, request.id))
     .returning();
 
@@ -222,6 +228,69 @@ app.patch("/:id/status", zValidator("json", statusSchema), async (c) => {
   await jobs.recomputeResponsiveness({ userId });
 
   return c.json(updated);
+});
+
+// POST /requests/:id/delay-note — send a delay note to the other party
+app.post("/:id/delay-note", zValidator("json", z.object({ note: z.string().min(1).max(1000) })), async (c) => {
+  const userId  = c.get("userId");
+  const { note } = c.req.valid("json");
+  const domains = await getUserDomains(userId);
+
+  const [request] = await db.select().from(backlinkRequests)
+    .where(eq(backlinkRequests.id, c.req.param("id"))).limit(1);
+
+  if (!request) return c.json({ error: "Not found" }, 404);
+  if (!domains.includes(request.requesterDomain) && !domains.includes(request.publisherDomain)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  if (request.status !== "Accepted") {
+    return c.json({ error: "Delay notes can only be sent on accepted requests" }, 400);
+  }
+
+  const isPublisher = domains.includes(request.publisherDomain);
+  const fromSide   = isPublisher ? "publisher" : "requester";
+  const toUserId   = isPublisher ? request.requesterId : request.publisherId;
+
+  const [delayNote] = await db.insert(requestDelayNotes).values({
+    requestId: request.id,
+    fromUserId: userId,
+    toUserId:   toUserId ?? undefined,
+    fromSide,
+    note,
+  }).returning();
+
+  // Notify the other party
+  if (toUserId) {
+    await db.insert(notifications).values({
+      userId:    toUserId,
+      type:      "delay_note",
+      title:     "Delay update on a backlink request",
+      body:      `${isPublisher ? request.publisherDomain : request.requesterDomain} sent a note about the delay: "${note.slice(0, 120)}${note.length > 120 ? "..." : ""}"`,
+      metadata:  { requestId: request.id, fromSide, from: isPublisher ? request.publisherDomain : request.requesterDomain },
+    });
+  }
+
+  return c.json(delayNote, 201);
+});
+
+// GET /requests/:id/delay-notes — fetch all delay notes for a request
+app.get("/:id/delay-notes", async (c) => {
+  const userId  = c.get("userId");
+  const domains = await getUserDomains(userId);
+
+  const [request] = await db.select().from(backlinkRequests)
+    .where(eq(backlinkRequests.id, c.req.param("id"))).limit(1);
+
+  if (!request) return c.json({ error: "Not found" }, 404);
+  if (!domains.includes(request.requesterDomain) && !domains.includes(request.publisherDomain)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const notes = await db.select().from(requestDelayNotes)
+    .where(eq(requestDelayNotes.requestId, request.id))
+    .orderBy(requestDelayNotes.createdAt);
+
+  return c.json({ data: notes });
 });
 
 // POST /requests/:id/verify-live

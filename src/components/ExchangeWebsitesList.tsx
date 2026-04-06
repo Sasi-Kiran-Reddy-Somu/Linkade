@@ -490,6 +490,18 @@ export default function ExchangeWebsitesList({
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // ── User project categories (from localStorage) ──────────────────────────────
+  const userProjectCategories = useMemo<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem("home-projects");
+      const projects: { category?: string; tags?: string[] }[] = raw ? JSON.parse(raw) : [];
+      const cats = projects.map((p) => p.category).filter(Boolean) as string[];
+      return new Set(cats);
+    } catch { return new Set(); }
+  }, []);
+
+  const [showRecommended, setShowRecommended] = useState(false);
+
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedLanguages, setSelectedLanguages] = useState<Set<string>>(new Set());
@@ -686,6 +698,7 @@ export default function ExchangeWebsitesList({
     let result = mockWebsites.filter((site) => {
       if (mode === "suggestions" && suggestedDomains && suggestedDomains.length > 0 && !suggestedDomains.includes(site.domain)) return false;
       if (search && !site.domain.toLowerCase().includes(search.toLowerCase())) return false;
+      if (showRecommended && userProjectCategories.size && !site.categories.some((c) => userProjectCategories.has(c))) return false;
       if (selectedCategories.size && !site.categories.some((c) => selectedCategories.has(c))) return false;
       if (selectedTags.size && !site.tags.some((t) => selectedTags.has(t))) return false;
       if (selectedLanguages.size && !selectedLanguages.has(site.language)) return false;
@@ -706,7 +719,7 @@ export default function ExchangeWebsitesList({
       });
     }
     return result;
-  }, [search, selectedCategories, selectedTags, selectedLanguages, selectedCountries, filterDA, filterDR, filterTF, filterSpam, filterLI, filterGP, sortKey, sortAsc, mode, suggestedDomains]);
+  }, [search, selectedCategories, selectedTags, selectedLanguages, selectedCountries, filterDA, filterDR, filterTF, filterSpam, filterLI, filterGP, sortKey, sortAsc, mode, suggestedDomains, showRecommended, userProjectCategories]);
 
   const totalPages = Math.max(1, Math.ceil(displayedSites.length / ITEMS_PER_PAGE));
   const pagedSites = displayedSites.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -787,6 +800,17 @@ export default function ExchangeWebsitesList({
             </span>
           )}
         </Button>
+
+        {/* Recommended for you toggle (only when user has project categories) */}
+        {userProjectCategories.size > 0 && mode !== "suggestions" && (
+          <button
+            onClick={() => setShowRecommended((v) => !v)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${showRecommended ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Recommended
+          </button>
+        )}
 
         {/* Export dropdown (suggestions mode only) */}
         {mode === "suggestions" && (

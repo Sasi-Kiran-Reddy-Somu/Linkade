@@ -127,12 +127,17 @@ export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = localStorage.getItem("home-projects");
     const parsed: Project[] = saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-    return parsed.map((p) => ({
-      ...p,
-      dr: p.dr ?? randInt(5, 80),
-      spamScore: p.spamScore ?? randInt(1, 20),
-      responsivenessScore: p.responsivenessScore ?? randInt(40, 98),
-    }));
+    return parsed.map((p) => {
+      const rd = p.ahrefsRefDomains ?? randInt(100, 20000);
+      return {
+        ...p,
+        dr: p.dr ?? randInt(5, 80),
+        spamScore: p.spamScore ?? randInt(1, 20),
+        responsivenessScore: p.responsivenessScore ?? randInt(40, 98),
+        ahrefsRefDomains: rd,
+        ahrefsBacklinks: p.ahrefsBacklinks ?? rd * randInt(2, 6),
+      };
+    });
   });
 
   useEffect(() => {

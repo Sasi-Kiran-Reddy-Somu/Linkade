@@ -221,14 +221,14 @@ function Hero({ theme }: { theme: Theme }) {
 
         {/* Headline */}
         <h1 className="text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6" style={{ color: t.text }}>
-          Exchange backlinks with{" "}
+          Your backlink exchange,{" "}
           <span style={{
             background: "linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #60a5fa 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
           }}>
-            publishers you trust.
+            minus the chaos.
           </span>
         </h1>
 

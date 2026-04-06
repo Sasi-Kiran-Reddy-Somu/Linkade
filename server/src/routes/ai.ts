@@ -35,14 +35,14 @@ async function fetchPageText(domain: string): Promise<string> {
     signal: AbortSignal.timeout(6000),
   });
   const html = await res.text();
-  // Strip tags, collapse whitespace, truncate to 1200 chars
+  // Strip tags, collapse whitespace, truncate to 5000 chars (~700-800 words)
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 1200);
+    .slice(0, 5000);
   return text;
 }
 

@@ -33,7 +33,7 @@ export function MetricInfo({ metric, isOwn }: { metric: string; isOwn?: boolean 
         <Info className="h-3 w-3 text-muted-foreground/50 cursor-default hover:text-muted-foreground transition-colors shrink-0" />
       </TooltipTrigger>
       <TooltipContent
-        side="top"
+        side="bottom"
         className="max-w-52 text-[11px] leading-relaxed font-normal normal-case tracking-normal text-left"
       >
         {text}

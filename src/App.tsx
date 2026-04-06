@@ -17,7 +17,6 @@ import HelpCenter from "./pages/HelpCenter";
 import Settings from "./pages/Settings";
 import Writerate from "./pages/Writerate";
 import WriterateProject from "./pages/WriterateProject";
-import WriterateNewArticle from "./pages/WriterateNewArticle";
 import RequestSuggestions from "./pages/RequestSuggestions";
 import AddCredits from "./pages/AddCredits";
 import Upgrade from "./pages/Upgrade";
@@ -49,8 +48,7 @@ const App = () => (
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/writerate" element={<Writerate />} />
-          <Route path="/writerate/:projectId" element={<WriterateProject />} />
-          <Route path="/writerate/:projectId/new-article" element={<WriterateNewArticle />} />
+          <Route path="/writerate/:domain" element={<WriterateProject />} />
           <Route path="/exchange/suggestions" element={<RequestSuggestions />} />
           <Route path="/credits/add" element={<AddCredits />} />
           <Route path="/upgrade" element={<Upgrade />} />

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { anthropic } from "../lib/anthropic.js";
+import { openai } from "../lib/openai.js";
 
 const app = new Hono();
 
@@ -35,6 +35,7 @@ async function fetchPageText(domain: string): Promise<string> {
     signal: AbortSignal.timeout(6000),
   });
   const html = await res.text();
+  // Strip tags, collapse whitespace, truncate to 1200 chars
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -52,16 +53,18 @@ app.post(
   "/detect-category",
   zValidator("json", z.object({ domain: z.string().min(3) })),
   async (c) => {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return c.json({ error: "AI service not configured" }, 503);
     }
 
     const { domain } = c.req.valid("json");
 
+    // Fetch homepage content
     let pageText = "";
     try {
       pageText = await fetchPageText(domain);
     } catch {
+      // If crawl fails, fall back to domain-name only classification
       pageText = `Website domain: ${domain}`;
     }
 
@@ -89,20 +92,17 @@ Return format:
 
     let raw = "";
     try {
-      const response = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+        max_tokens: 200,
       });
-      const block = response.content[0];
-      raw = block.type === "text" ? block.text.trim() : "";
+      raw = response.choices[0]?.message?.content?.trim() ?? "";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      return c.json({ error: "Claude API call failed", detail: msg }, 502);
+      return c.json({ error: "OpenAI API call failed", detail: msg }, 502);
     }
-
-    // Strip markdown code fences if present
-    raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 
     let parsed: { category: string; tags: string[]; confidence: number };
     try {
@@ -111,6 +111,7 @@ Return format:
       return c.json({ error: "Failed to parse AI response", raw }, 500);
     }
 
+    // Validate category exists in taxonomy
     if (!TAXONOMY[parsed.category]) {
       parsed.category = "Business & Entrepreneurship";
       parsed.tags = TAXONOMY["Business & Entrepreneurship"];

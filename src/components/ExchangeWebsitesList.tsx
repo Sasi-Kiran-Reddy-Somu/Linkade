@@ -1143,7 +1143,7 @@ export default function ExchangeWebsitesList({
 
       {/* ── Suggestions dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!suggestionSite} onOpenChange={(open) => { if (!open) closeSuggestion(); }}>
-        <DialogContent className="w-[560px] max-h-[85vh] flex flex-col overflow-hidden p-0">
+        <DialogContent className="w-[680px] max-h-[90vh] flex flex-col overflow-hidden p-0">
           {/* Header */}
           <div className="shrink-0 px-6 pt-5 pb-4 border-b border-border">
             <DialogHeader className="mb-0">
@@ -1170,7 +1170,7 @@ export default function ExchangeWebsitesList({
                     <p className="text-xs text-muted-foreground mt-0.5">For project: <strong>{projectName}</strong></p>
                   )}
                   {/* Metrics row */}
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     {[
                       { label: "DR", value: suggestionSite.dr },
                       { label: "DA", value: suggestionSite.da },
@@ -1178,6 +1178,8 @@ export default function ExchangeWebsitesList({
                       { label: "Traffic", value: fmtNum(suggestionSite.traffic) },
                       { label: "RD", value: fmtNum(suggestionSite.rd) },
                       { label: "Spam", value: suggestionSite.spamScore, color: suggestionSite.spamScore <= 3 ? "text-green-600" : suggestionSite.spamScore <= 7 ? "text-amber-500" : "text-red-500" },
+                      { label: "RefDomains", value: fmtNum(suggestionSite.ahrefsRefDomains) },
+                      { label: "Backlinks", value: fmtNum(suggestionSite.ahrefsBacklinks) },
                     ].map((m) => (
                       <div key={m.label} className="flex items-center gap-0.5 rounded-md bg-muted/50 px-2 py-0.5">
                         <span className="text-[10px] font-medium text-muted-foreground">{m.label}</span>
@@ -1378,9 +1380,9 @@ export default function ExchangeWebsitesList({
         </DialogContent>
       </Dialog>
 
-      {/* ── Step 1: Choose request type ──────────────────────────────────────── */}
+      {/* ── Step 1: Site metrics + Choose request type ───────────────────────── */}
       <Dialog open={!!requestSite && requestStep === 1} onOpenChange={(open) => { if (!open) closeRequest(); }}>
-        <DialogContent className="w-[500px]">
+        <DialogContent className="w-[560px]">
           <DialogHeader>
             <DialogTitle>Request Backlink</DialogTitle>
             <p className="text-sm text-muted-foreground">{requestSite?.domain}</p>
@@ -1388,54 +1390,77 @@ export default function ExchangeWebsitesList({
           {requestSite && (() => {
             const perDomain = requestSite.responsiveness;
             const overall = ownerOverallResponsiveness(requestSite.domain);
-            const perColor = perDomain >= 75 ? "text-green-600" : perDomain >= 50 ? "text-amber-500" : "text-red-500";
-            const perBg = perDomain >= 75 ? "bg-green-500" : perDomain >= 50 ? "bg-amber-400" : "bg-red-500";
-            const ovColor = overall >= 75 ? "text-green-600" : overall >= 50 ? "text-amber-500" : "text-red-500";
-            const ovBg = overall >= 75 ? "bg-green-500" : overall >= 50 ? "bg-amber-400" : "bg-red-500";
+            const spamColor = requestSite.spamScore <= 3 ? "text-green-600" : requestSite.spamScore <= 7 ? "text-amber-500" : "text-red-500";
             return (
-              <div className="flex flex-col gap-1 -mt-1 mb-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="text-[10px] text-muted-foreground w-[120px] shrink-0">Owner's resp. (all projects)</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[80px]">
-                    <div className={`h-full rounded-full ${ovBg}`} style={{ width: `${overall}%` }} />
+              <div className="space-y-4">
+                {/* Metrics grid */}
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Site Metrics</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: "DR", value: requestSite.dr },
+                      { label: "DA", value: requestSite.da },
+                      { label: "TF", value: requestSite.tf },
+                      { label: "Traffic", value: fmtNum(requestSite.traffic) },
+                      { label: "RD", value: fmtNum(requestSite.rd) },
+                      { label: "Spam", value: requestSite.spamScore, color: spamColor },
+                      { label: "RefDomains", value: fmtNum(requestSite.ahrefsRefDomains) },
+                      { label: "Backlinks", value: fmtNum(requestSite.ahrefsBacklinks) },
+                    ].map((m) => (
+                      <div key={m.label} className="flex flex-col items-center rounded-lg bg-background border border-border px-2 py-2.5 text-center">
+                        <div className="flex items-center gap-0.5 mb-1">
+                          <span className="text-[10px] font-medium text-muted-foreground">{m.label}</span>
+                          <MetricInfo metric={m.label} />
+                        </div>
+                        <span className={`text-sm font-bold ${(m as { color?: string }).color ?? "text-foreground"}`}>{m.value}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span className={`text-[11px] font-bold ${ovColor}`}>{overall}%</span>
+                  {/* Responsiveness */}
+                  <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+                    {[
+                      { label: "Owner's resp. (all projects)", value: overall },
+                      { label: "Owner's resp. (this domain)", value: perDomain },
+                    ].map(({ label, value }) => {
+                      const color = value >= 75 ? "text-green-600" : value >= 50 ? "text-amber-500" : "text-red-500";
+                      const bg = value >= 75 ? "bg-green-500" : value >= 50 ? "bg-amber-400" : "bg-red-500";
+                      return (
+                        <div key={label} className="flex items-center gap-2">
+                          <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-[10px] text-muted-foreground w-[140px] shrink-0">{label}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[80px]">
+                            <div className={`h-full rounded-full ${bg}`} style={{ width: `${value}%` }} />
+                          </div>
+                          <span className={`text-[11px] font-bold ${color}`}>{value}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="text-[10px] text-muted-foreground w-[120px] shrink-0">Owner's resp. (this domain)</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[80px]">
-                    <div className={`h-full rounded-full ${perBg}`} style={{ width: `${perDomain}%` }} />
+
+                {/* Request type selection */}
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Choose the type of backlink you'd like to request:</p>
+                  <div className="flex gap-2">
+                    {requestSite.availableLinkInsertion && (
+                      <button onClick={() => handleSelectType("link-insertion")}
+                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-gray-50 hover:border-gray-400 transition-colors">
+                        <Link2 className="h-4 w-4 text-gray-600" />
+                        Link Insertion
+                      </button>
+                    )}
+                    {requestSite.availableGuestPost && (
+                      <button onClick={() => handleSelectType("guest-post")}
+                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-green-50 hover:border-green-400 transition-colors">
+                        <FileText className="h-4 w-4 text-green-600" />
+                        Guest Post
+                      </button>
+                    )}
                   </div>
-                  <span className={`text-[11px] font-bold ${perColor}`}>{perDomain}%</span>
                 </div>
               </div>
             );
           })()}
-          <p className="text-sm text-gray-600 mb-1">Choose the type of backlink you'd like to request:</p>
-          <div className={`grid gap-3 ${requestSite?.availableLinkInsertion && requestSite?.availableGuestPost ? "grid-cols-2" : "grid-cols-1"}`}>
-            {requestSite?.availableLinkInsertion && (
-              <button onClick={() => handleSelectType("link-insertion")}
-                className="flex flex-col items-center gap-2.5 rounded-xl border-2 border-border p-5 hover:border-gray-900 hover:bg-gray-50 transition-colors text-center group">
-                <div className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
-                  <Link2 className="h-5 w-5 text-gray-700" />
-                </div>
-                <span className="font-semibold text-gray-900">Link Insertion</span>
-                <span className="text-xs text-muted-foreground leading-snug">Add a contextual link within an existing article on their site</span>
-              </button>
-            )}
-            {requestSite?.availableGuestPost && (
-              <button onClick={() => handleSelectType("guest-post")}
-                className="flex flex-col items-center gap-2.5 rounded-xl border-2 border-border p-5 hover:border-green-400 hover:bg-green-50/50 transition-colors text-center group">
-                <div className="h-11 w-11 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                  <FileText className="h-5 w-5 text-green-600" />
-                </div>
-                <span className="font-semibold text-gray-900">Guest Post</span>
-                <span className="text-xs text-muted-foreground leading-snug">Write a new article to be published on their site</span>
-              </button>
-            )}
-          </div>
           <div className="flex justify-end mt-1">
             <button onClick={closeRequest} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors">
               Cancel
@@ -1474,7 +1499,7 @@ export default function ExchangeWebsitesList({
                     <p className="text-xs text-muted-foreground mt-0.5">↔ Your project: <strong>{projectName}</strong></p>
                   )}
                   {/* Metrics row */}
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     {[
                       { label: "DR", value: requestSite.dr },
                       { label: "DA", value: requestSite.da },
@@ -1482,6 +1507,8 @@ export default function ExchangeWebsitesList({
                       { label: "Traffic", value: fmtNum(requestSite.traffic) },
                       { label: "RD", value: fmtNum(requestSite.rd) },
                       { label: "Spam", value: requestSite.spamScore, color: requestSite.spamScore <= 3 ? "text-green-600" : requestSite.spamScore <= 7 ? "text-amber-500" : "text-red-500" },
+                      { label: "RefDomains", value: fmtNum(requestSite.ahrefsRefDomains) },
+                      { label: "Backlinks", value: fmtNum(requestSite.ahrefsBacklinks) },
                     ].map((m) => (
                       <div key={m.label} className="flex items-center gap-0.5 rounded-md bg-muted/50 px-2 py-0.5">
                         <span className="text-[10px] font-medium text-muted-foreground">{m.label}</span>

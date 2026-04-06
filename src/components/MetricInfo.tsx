@@ -12,6 +12,8 @@ const METRIC_INFO: Record<string, string> = {
   Traffic: "Estimated monthly organic visitors from search engines. Grow it with consistent SEO, high-quality content publishing, and strong backlink acquisition.",
   RD: "Number of unique domains linking to this site. A higher count with diverse, relevant sources signals stronger domain authority and search visibility.",
   Spam: "Moz's spam indicator (0–17) — lower is better. Reduce it by disavowing toxic backlinks and avoiding link schemes or low-quality directories.",
+  RefDomains: "Ahrefs' count of unique referring domains pointing to this site. A broad, diverse referring domain profile is a strong signal of organic link growth and authority.",
+  Backlinks: "Total number of backlinks (including multiple links from the same domain) counted by Ahrefs. A high count relative to referring domains can indicate deep site content or strong link velocity.",
   Responsiveness: "How consistently the site owner responds to backlink requests. Higher scores indicate a more reliable exchange partner who handles requests promptly.",
   Resp: "How consistently the site owner responds to backlink requests. Higher means a more reliable exchange partner.",
 };

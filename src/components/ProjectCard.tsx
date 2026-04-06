@@ -151,7 +151,14 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
 
-  const [faviconError, setFaviconError] = useState(false);
+  // Favicon source cascade: direct /favicon.ico → Google with root domain → initials
+  const rootDomain = domain.split(".").slice(-2).join(".");
+  const FAVICON_SRCS = [
+    `https://${domain}/favicon.ico`,
+    `https://www.google.com/s2/favicons?domain=${rootDomain}&sz=64`,
+  ];
+  const [faviconIdx, setFaviconIdx] = useState(0);
+  const faviconError = faviconIdx >= FAVICON_SRCS.length;
   const initials = displayName.slice(0, 2).toUpperCase();
 
   const hasLinkInsertionGuidelines = linkInsertionGuidelines.some((p) => p.trim());
@@ -242,15 +249,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 shrink-0 overflow-hidden mt-0.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 shrink-0 overflow-hidden mt-0.5 p-1.5">
               {faviconError ? (
                 <span className="text-sm font-bold text-gray-700">{initials}</span>
               ) : (
                 <img
-                  src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                  src={FAVICON_SRCS[faviconIdx]}
                   alt={displayName}
-                  className="h-full w-full object-cover"
-                  onError={() => setFaviconError(true)}
+                  className="h-7 w-7 object-contain"
+                  onError={() => setFaviconIdx((i) => i + 1)}
                 />
               )}
             </div>

@@ -151,11 +151,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
 
-  // Favicon source cascade: direct /favicon.ico → Google with root domain → initials
-  const rootDomain = domain.split(".").slice(-2).join(".");
+  // Favicon source cascade: DuckDuckGo (follows <link rel="icon">) → direct /favicon.ico → initials
   const FAVICON_SRCS = [
+    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
     `https://${domain}/favicon.ico`,
-    `https://www.google.com/s2/favicons?domain=${rootDomain}&sz=64`,
   ];
   const [faviconIdx, setFaviconIdx] = useState(0);
   const faviconError = faviconIdx >= FAVICON_SRCS.length;

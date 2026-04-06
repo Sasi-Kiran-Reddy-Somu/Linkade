@@ -151,11 +151,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
 
-  // Favicon source cascade: DuckDuckGo (follows <link rel="icon">) → direct /favicon.ico → initials
-  const FAVICON_SRCS = [
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-    `https://${domain}/favicon.ico`,
-  ];
+  // For regular domains Google is most reliable; for subdomains (3+ parts) use DuckDuckGo first
+  // since Google returns a generic globe for uncached subdomains without triggering onError.
+  const isSubdomain = domain.split(".").length > 2;
+  const FAVICON_SRCS = isSubdomain
+    ? [`https://icons.duckduckgo.com/ip3/${domain}.ico`, `https://${domain}/favicon.ico`]
+    : [`https://www.google.com/s2/favicons?domain=${domain}&sz=64`, `https://icons.duckduckgo.com/ip3/${domain}.ico`];
   const [faviconIdx, setFaviconIdx] = useState(0);
   const faviconError = faviconIdx >= FAVICON_SRCS.length;
   const initials = displayName.slice(0, 2).toUpperCase();

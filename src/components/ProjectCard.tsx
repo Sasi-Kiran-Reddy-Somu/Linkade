@@ -12,6 +12,8 @@ interface ProjectCardProps {
   tf?: number;
   traffic?: number;
   spamScore?: number;
+  ahrefsRefDomains?: number;
+  ahrefsBacklinks?: number;
   exchangeEnabled: boolean;
   responsivenessScore?: number;
   hasNotes?: boolean;
@@ -92,7 +94,7 @@ function generateToken() {
 const ProjectCard: React.FC<ProjectCardProps> = ({
   name: initialName,
   domain,
-  da, dr, tf, traffic, spamScore,
+  da, dr, tf, traffic, spamScore, ahrefsRefDomains, ahrefsBacklinks,
   exchangeEnabled,
   responsivenessScore,
   hasNotes,
@@ -335,6 +337,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             <Metric label="TF" value={tf} />
             <Metric label="Traffic" value={traffic} />
             <Metric label="Spam" value={spamScore} colorClass={spamScore === undefined ? "text-gray-800" : spamScore <= 3 ? "text-green-600" : spamScore <= 7 ? "text-amber-500" : "text-red-500"} />
+            {ahrefsRefDomains !== undefined && <Metric label="RefDomains" value={ahrefsRefDomains} />}
+            {ahrefsBacklinks !== undefined && <Metric label="Backlinks" value={ahrefsBacklinks} />}
             {responsivenessScore !== undefined && (
               <div className="flex flex-col items-center justify-center rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 min-w-[72px]">
                 <span className="flex items-center gap-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Resp.<MetricInfo metric="Resp" isOwn /></span>

@@ -19,6 +19,8 @@ interface Project {
   tf: number;
   traffic: number;
   spamScore: number;
+  ahrefsRefDomains?: number;
+  ahrefsBacklinks?: number;
   category?: string;
   tags?: string[];
 }
@@ -28,12 +30,14 @@ function randInt(min: number, max: number) {
 }
 
 function randomMetrics() {
-  return { da: randInt(10, 75), dr: randInt(5, 80), tf: randInt(5, 70), traffic: randInt(500, 85000), spamScore: randInt(1, 20), responsivenessScore: randInt(40, 98) };
+  const dr = randInt(5, 80);
+  const rd = randInt(100, 20000);
+  return { da: randInt(10, 75), dr, tf: randInt(5, 70), traffic: randInt(500, 85000), spamScore: randInt(1, 20), responsivenessScore: randInt(40, 98), ahrefsRefDomains: rd, ahrefsBacklinks: rd * randInt(2, 6) };
 }
 
 const INITIAL_PROJECTS: Project[] = [
-  { name: "Cube", domain: "cubehq.ai", exchangeEnabled: true, exchangeStatus: "Pending", responsivenessScore: 92, da: 42, dr: 51, tf: 38, traffic: 12400, spamScore: 3 },
-  { name: "JustWhatWorks", domain: "justwhatworks.com", exchangeEnabled: false, exchangeStatus: "Exchange Off", responsivenessScore: 61, da: 27, dr: 33, tf: 21, traffic: 4800, spamScore: 7 },
+  { name: "Cube", domain: "cubehq.ai", exchangeEnabled: true, exchangeStatus: "Pending", responsivenessScore: 92, da: 42, dr: 51, tf: 38, traffic: 12400, spamScore: 3, ahrefsRefDomains: 3240, ahrefsBacklinks: 14820 },
+  { name: "JustWhatWorks", domain: "justwhatworks.com", exchangeEnabled: false, exchangeStatus: "Exchange Off", responsivenessScore: 61, da: 27, dr: 33, tf: 21, traffic: 4800, spamScore: 7, ahrefsRefDomains: 980, ahrefsBacklinks: 3100 },
 ];
 
 // ── AI category/tag detection via backend ─────────────────────────────────────
@@ -356,7 +360,7 @@ export default function MyProjects() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">What is the Responsiveness score?</p>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
-                It reflects how quickly you respond to incoming backlink requests. A higher score makes your site more visible in the exchange — sites with scores above 75% appear at the top of searches.
+                It reflects how quickly you respond to incoming backlink requests. A higher score signals to requesters that you are a reliable exchange partner.
                 <strong> Respond to requests within 48 hours to keep your score healthy.</strong>
               </p>
             </div>
@@ -398,6 +402,8 @@ export default function MyProjects() {
             tf={p.tf}
             traffic={p.traffic}
             spamScore={p.spamScore}
+            ahrefsRefDomains={p.ahrefsRefDomains}
+            ahrefsBacklinks={p.ahrefsBacklinks}
             exchangeEnabled={p.exchangeEnabled}
             responsivenessScore={p.responsivenessScore}
             hasNotes={!!notes[p.domain]}

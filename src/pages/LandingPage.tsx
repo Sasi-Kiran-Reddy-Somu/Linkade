@@ -216,26 +216,25 @@ function Hero({ theme }: { theme: Theme }) {
             color: "#a78bfa",
           }}>
           <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-          The future of link building is here
+          The smarter way to exchange backlinks
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6" style={{ color: t.text }}>
-          Build backlinks that{" "}
+          Exchange backlinks with{" "}
           <span style={{
             background: "linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #60a5fa 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
           }}>
-            actually rank.
+            publishers you trust.
           </span>
         </h1>
 
         {/* Sub */}
         <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: t.subtext }}>
-          Exchange links with vetted publishers, track SEO growth over time,
-          and let AI match you to the perfect niche. All in one platform.
+          A credit-based exchange where site owners swap backlinks directly — no cold outreach, no payments, no guesswork. Find a match, send a request, and go live.
         </p>
 
         {/* CTAs */}

@@ -344,6 +344,157 @@ export default function Dashboard() {
           </PopoverContent>
         </Popover>
 
+        {/* ── Tasks ── */}
+        {(() => {
+          // Auto-tasks: computed live from request data + localStorage statuses
+          // refreshKey forces re-evaluation after dialog closes
+          void refreshKey;
+          const reqs = getProjectRequests(selectedDomain);
+          const pendingIncomingCount = reqs.filter(
+            (r) => r.type === "incoming" && getRequestStatus(r.id) === "Pending"
+          ).length;
+          const acceptedIncomingNotLiveCount = reqs.filter(
+            (r) => r.type === "incoming" && getRequestStatus(r.id) === "Accepted"
+          ).length;
+          const acceptedOutgoingNotLiveCount = reqs.filter(
+            (r) => r.type === "outgoing" && getRequestStatus(r.id) === "Accepted"
+          ).length;
+
+          const autoTasks: { id: string; text: string; sub: string; dialog: "incoming" | "outgoing"; filterStatus?: RequestStatus; color: string; icon: JSX.Element }[] = [];
+          if (pendingIncomingCount > 0) {
+            autoTasks.push({
+              id: "pending-incoming",
+              text: `${pendingIncomingCount} incoming request${pendingIncomingCount === 1 ? "" : "s"} pending your approval`,
+              sub: "Review and respond to avoid hurting your responsiveness score.",
+              dialog: "incoming",
+              filterStatus: "Pending",
+              color: "border-l-amber-400 bg-amber-50/50",
+              icon: <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />,
+            });
+          }
+          if (acceptedIncomingNotLiveCount > 0) {
+            autoTasks.push({
+              id: "accepted-incoming-not-live",
+              text: `${acceptedIncomingNotLiveCount} accepted request${acceptedIncomingNotLiveCount === 1 ? "" : "s"} — link not yet published`,
+              sub: "You accepted these requests. Open each one and click 'Mark as Live' once you've published the link.",
+              dialog: "incoming",
+              filterStatus: "Accepted",
+              color: "border-l-blue-400 bg-blue-50/50",
+              icon: <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0" />,
+            });
+          }
+          if (acceptedOutgoingNotLiveCount > 0) {
+            autoTasks.push({
+              id: "accepted-outgoing-not-live",
+              text: `${acceptedOutgoingNotLiveCount} accepted outgoing backlink${acceptedOutgoingNotLiveCount === 1 ? "" : "s"} not yet marked as Live`,
+              sub: "Open the request and click 'Mark as Live' once the publisher has published your link.",
+              dialog: "outgoing",
+              filterStatus: "Accepted",
+              color: "border-l-green-400 bg-green-50/50",
+              icon: <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
+            });
+          }
+
+          return (
+            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Tasks</h3>
+                  {selectedProject && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedProject.name}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowTrash(true)}
+                  className="rounded-lg bg-black px-3 py-1.5 text-sm font-semibold text-white hover:bg-black/80 transition-colors"
+                >
+                  Trash {trashedTodos.length > 0 && `(${trashedTodos.length})`}
+                </button>
+              </div>
+
+              {/* Auto-generated tasks */}
+              {autoTasks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Action Required</p>
+                  {autoTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`flex items-start gap-3 rounded-lg border border-border border-l-4 ${task.color} px-4 py-3`}
+                    >
+                      <div className="mt-0.5">{task.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{task.text}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{task.sub}</p>
+                      </div>
+                      <button
+                        onClick={() => setRequestsDialog({ type: task.dialog, filterStatus: task.filterStatus })}
+                        className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white transition-colors"
+                      >
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {autoTasks.length === 0 && activeTodos.length === 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  <p className="text-sm text-green-700 font-medium">All caught up — no pending tasks.</p>
+                </div>
+              )}
+
+              {/* Manual tasks */}
+              {(autoTasks.length > 0 || activeTodos.length > 0) && activeTodos.length > 0 && (
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground pt-1">My Tasks</p>
+              )}
+              <div className="space-y-2">
+                {activeTodos.map((todo, i) => (
+                  <div
+                    key={todo.id}
+                    draggable
+                    onDragStart={() => handleDragStart(todo.id)}
+                    onDragOver={(e) => handleDragOver(e, todo.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center gap-3 rounded-lg border border-border px-4 py-2.5 cursor-text transition-opacity ${dragId === todo.id ? "opacity-40" : ""}`}
+                    onClick={() => setFocusedId(todo.id)}
+                  >
+                    <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <DragHandle />
+                    </div>
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-muted-foreground w-4">{i + 1}</span>
+                    {focusedId === todo.id ? (
+                      <input
+                        autoFocus
+                        value={todo.text}
+                        onChange={(e) => updateTodo(todo.id, e.target.value)}
+                        onBlur={() => setFocusedId(null)}
+                        className="flex-1 text-sm bg-transparent outline-none"
+                        placeholder="Enter task..."
+                      />
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm">
+                          {todo.text || <span className="text-muted-foreground">Enter task...</span>}
+                        </span>
+                        <button onClick={(e) => { e.stopPropagation(); setFocusedId(todo.id); }} className="rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/80 transition-colors">Edit</button>
+                        <button onClick={(e) => { e.stopPropagation(); trashTodo(todo.id); }} className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition-colors">Delete</button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={addTodo}
+                  className="w-full flex items-center gap-1 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  + Add Task
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Filters row */}
         <div className="flex items-center gap-3 flex-wrap">
           {timePeriod !== "custom" && (
@@ -517,157 +668,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        {/* ── Tasks ── */}
-        {(() => {
-          // Auto-tasks: computed live from request data + localStorage statuses
-          // refreshKey forces re-evaluation after dialog closes
-          void refreshKey;
-          const reqs = getProjectRequests(selectedDomain);
-          const pendingIncomingCount = reqs.filter(
-            (r) => r.type === "incoming" && getRequestStatus(r.id) === "Pending"
-          ).length;
-          const acceptedIncomingNotLiveCount = reqs.filter(
-            (r) => r.type === "incoming" && getRequestStatus(r.id) === "Accepted"
-          ).length;
-          const acceptedOutgoingNotLiveCount = reqs.filter(
-            (r) => r.type === "outgoing" && getRequestStatus(r.id) === "Accepted"
-          ).length;
-
-          const autoTasks: { id: string; text: string; sub: string; dialog: "incoming" | "outgoing"; filterStatus?: RequestStatus; color: string; icon: JSX.Element }[] = [];
-          if (pendingIncomingCount > 0) {
-            autoTasks.push({
-              id: "pending-incoming",
-              text: `${pendingIncomingCount} incoming request${pendingIncomingCount === 1 ? "" : "s"} pending your approval`,
-              sub: "Review and respond to avoid hurting your responsiveness score.",
-              dialog: "incoming",
-              filterStatus: "Pending",
-              color: "border-l-amber-400 bg-amber-50/50",
-              icon: <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />,
-            });
-          }
-          if (acceptedIncomingNotLiveCount > 0) {
-            autoTasks.push({
-              id: "accepted-incoming-not-live",
-              text: `${acceptedIncomingNotLiveCount} accepted request${acceptedIncomingNotLiveCount === 1 ? "" : "s"} — link not yet published`,
-              sub: "You accepted these requests. Open each one and click 'Mark as Live' once you've published the link.",
-              dialog: "incoming",
-              filterStatus: "Accepted",
-              color: "border-l-blue-400 bg-blue-50/50",
-              icon: <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0" />,
-            });
-          }
-          if (acceptedOutgoingNotLiveCount > 0) {
-            autoTasks.push({
-              id: "accepted-outgoing-not-live",
-              text: `${acceptedOutgoingNotLiveCount} accepted outgoing backlink${acceptedOutgoingNotLiveCount === 1 ? "" : "s"} not yet marked as Live`,
-              sub: "Open the request and click 'Mark as Live' once the publisher has published your link.",
-              dialog: "outgoing",
-              filterStatus: "Accepted",
-              color: "border-l-green-400 bg-green-50/50",
-              icon: <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
-            });
-          }
-
-          return (
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">Tasks</h3>
-                  {selectedProject && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{selectedProject.name}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowTrash(true)}
-                  className="rounded-lg bg-black px-3 py-1.5 text-sm font-semibold text-white hover:bg-black/80 transition-colors"
-                >
-                  Trash {trashedTodos.length > 0 && `(${trashedTodos.length})`}
-                </button>
-              </div>
-
-              {/* Auto-generated tasks */}
-              {autoTasks.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Action Required</p>
-                  {autoTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className={`flex items-start gap-3 rounded-lg border border-border border-l-4 ${task.color} px-4 py-3`}
-                    >
-                      <div className="mt-0.5">{task.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{task.text}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{task.sub}</p>
-                      </div>
-                      <button
-                        onClick={() => setRequestsDialog({ type: task.dialog, filterStatus: task.filterStatus })}
-                        className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-white transition-colors"
-                      >
-                        View
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {autoTasks.length === 0 && activeTodos.length === 0 && (
-                <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-                  <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                  <p className="text-sm text-green-700 font-medium">All caught up — no pending tasks.</p>
-                </div>
-              )}
-
-              {/* Manual tasks */}
-              {(autoTasks.length > 0 || activeTodos.length > 0) && activeTodos.length > 0 && (
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground pt-1">My Tasks</p>
-              )}
-              <div className="space-y-2">
-                {activeTodos.map((todo, i) => (
-                  <div
-                    key={todo.id}
-                    draggable
-                    onDragStart={() => handleDragStart(todo.id)}
-                    onDragOver={(e) => handleDragOver(e, todo.id)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 rounded-lg border border-border px-4 py-2.5 cursor-text transition-opacity ${dragId === todo.id ? "opacity-40" : ""}`}
-                    onClick={() => setFocusedId(todo.id)}
-                  >
-                    <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                      <DragHandle />
-                    </div>
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-muted-foreground w-4">{i + 1}</span>
-                    {focusedId === todo.id ? (
-                      <input
-                        autoFocus
-                        value={todo.text}
-                        onChange={(e) => updateTodo(todo.id, e.target.value)}
-                        onBlur={() => setFocusedId(null)}
-                        className="flex-1 text-sm bg-transparent outline-none"
-                        placeholder="Enter task..."
-                      />
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm">
-                          {todo.text || <span className="text-muted-foreground">Enter task...</span>}
-                        </span>
-                        <button onClick={(e) => { e.stopPropagation(); setFocusedId(todo.id); }} className="rounded-lg bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/80 transition-colors">Edit</button>
-                        <button onClick={(e) => { e.stopPropagation(); trashTodo(todo.id); }} className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition-colors">Delete</button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                <button
-                  onClick={addTodo}
-                  className="w-full flex items-center gap-1 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  + Add Task
-                </button>
-              </div>
-            </div>
-          );
-        })()}
       </div>
 
       {requestsDialog && (

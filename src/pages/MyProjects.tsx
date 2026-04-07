@@ -5,6 +5,7 @@ import ProjectCard from "@/components/ProjectCard";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { checkMetricChanges } from "@/lib/metricNotifications";
 
 const RESP_BANNER_KEY = "resp-score-banner-seen";
 
@@ -143,6 +144,22 @@ export default function MyProjects() {
   useEffect(() => {
     localStorage.setItem("home-projects", JSON.stringify(projects));
   }, [projects]);
+
+  // Check for metric changes and generate notifications
+  useEffect(() => {
+    if (projects.length === 0) return;
+    checkMetricChanges(
+      projects.map((p) => ({
+        domain: p.domain,
+        name: p.name,
+        da: p.da ?? 0,
+        dr: p.dr ?? 0,
+        tf: p.tf ?? 0,
+        spamScore: p.spamScore ?? 0,
+        traffic: p.traffic ?? 0,
+      }))
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Notes state
   const [notes, setNotes] = useState<Record<string, string>>(() => {

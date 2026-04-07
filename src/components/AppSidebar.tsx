@@ -13,100 +13,57 @@ import {
   Star,
   Zap,
   Bell,
-  AlertTriangle,
-  MessageSquare,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { getAccountCredits } from "@/lib/credits";
 import { getAllRequests, isTATExpired, getDelayNotes } from "@/data/requests";
+import { addNotifications, unreadCount, getNotifications, saveNotifications } from "@/lib/notifications";
 
 const PLAN = "Starter";
 
-// ── Notification helpers ──────────────────────────────────────────────────────
+// ── Sync TAT + delay note notifications into the shared store ─────────────────
 
-interface SidebarNotif {
-  id: string;
-  type: "tat_overdue" | "delay_note";
-  title: string;
-  body: string;
-  requestId: string;
-  createdAt: string;
-}
-
-function getSidebarNotifications(): SidebarNotif[] {
-  try {
-    return JSON.parse(localStorage.getItem("sidebar-notifications") ?? "[]");
-  } catch { return []; }
-}
-
-function dismissSidebarNotification(id: string) {
-  const current = getSidebarNotifications().filter((n) => n.id !== id);
-  localStorage.setItem("sidebar-notifications", JSON.stringify(current));
-}
-
-/** Scans localStorage for overdue requests and delay notes, generates notifications
- *  if not already present. Safe to call on every render — deduplicates by notif id. */
-function syncNotifications(): SidebarNotif[] {
-  const existing = getSidebarNotifications();
-  const existingIds = new Set(existing.map((n) => n.id));
-  const newNotifs: SidebarNotif[] = [];
-
-  // Check all projects' requests for TAT overdue
+function syncRequestNotifications() {
   try {
     const raw = localStorage.getItem("home-projects");
     const projects: { domain: string }[] = raw ? JSON.parse(raw) : [];
     const domains = projects.map((p) => p.domain);
-
     const allRequests = getAllRequests("incoming", domains).concat(getAllRequests("outgoing", domains));
+    const incoming: Parameters<typeof addNotifications>[0] = [];
+
     for (const req of allRequests) {
       const status = localStorage.getItem(`req-status-${req.id}`) ?? "Pending";
-      if (status !== "Accepted") continue;
-      if (!isTATExpired(req.id, req.createdAt)) continue;
+      if (status === "Accepted" && isTATExpired(req.id, req.createdAt)) {
+        const notifId = `tat-overdue-${req.id}`;
+        const isIncoming = req.type === "incoming";
+        incoming.push({
+          id: notifId,
+          type: "tat_overdue",
+          title: "TAT deadline passed",
+          body: isIncoming
+            ? `The link for ${req.externalDomain}'s request is overdue. Consider sending a delay note.`
+            : `${req.externalDomain} has not published the link yet and the TAT has passed.`,
+          requestId: req.id,
+          createdAt: new Date().toISOString(),
+        });
+      }
 
-      const notifId = `tat-overdue-${req.id}`;
-      if (existingIds.has(notifId)) continue;
-
-      const isIncoming = req.type === "incoming";
-      newNotifs.push({
-        id: notifId,
-        type: "tat_overdue",
-        title: "TAT deadline passed",
-        body: isIncoming
-          ? `The link for ${req.externalDomain}'s request is overdue. Consider sending a delay note.`
-          : `${req.externalDomain} hasn't published the link yet — TAT has passed.`,
-        requestId: req.id,
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    // Check for unread delay notes sent TO us (fromSide !== our side)
-    for (const req of allRequests) {
       const notes = getDelayNotes(req.id);
       const mySide = req.type === "incoming" ? "publisher" : "requester";
-      const incomingNotes = notes.filter((n) => n.fromSide !== mySide);
-      for (const note of incomingNotes) {
-        const notifId = `delay-note-${note.id}`;
-        if (existingIds.has(notifId)) continue;
-        newNotifs.push({
-          id: notifId,
+      for (const note of notes.filter((n) => n.fromSide !== mySide)) {
+        incoming.push({
+          id: `delay-note-${note.id}`,
           type: "delay_note",
           title: "Delay note received",
-          body: `${req.externalDomain}: "${note.note.slice(0, 80)}${note.note.length > 80 ? "…" : ""}"`,
+          body: `${req.externalDomain}: "${note.note.slice(0, 100)}${note.note.length > 100 ? "..." : ""}"`,
           requestId: req.id,
           createdAt: note.sentAt,
         });
       }
     }
+    addNotifications(incoming);
   } catch { /* ignore */ }
-
-  if (newNotifs.length > 0) {
-    const updated = [...existing, ...newNotifs];
-    localStorage.setItem("sidebar-notifications", JSON.stringify(updated));
-    return updated;
-  }
-  return existing;
 }
 
 // ── SidebarItem ───────────────────────────────────────────────────────────────
@@ -115,12 +72,13 @@ interface SidebarItemProps {
   icon: React.ReactNode;
   label: string;
   to: string;
-  badge?: string;
+  badge?: string | number;
+  badgeColor?: "blue" | "red";
 }
 
-function SidebarItem({ icon, label, to, badge }: SidebarItemProps) {
+function SidebarItem({ icon, label, to, badge, badgeColor = "blue" }: SidebarItemProps) {
   const location = useLocation();
-  const isActive = location.pathname === to;
+  const isActive = location.pathname === to || location.pathname.startsWith(to + "/");
 
   return (
     <Link
@@ -134,71 +92,12 @@ function SidebarItem({ icon, label, to, badge }: SidebarItemProps) {
     >
       {icon}
       <span className="flex-1">{label}</span>
-      {badge && (
-        <span className="rounded-full bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 leading-none tracking-wide">
-          {badge}
+      {badge !== undefined && Number(badge) > 0 && (
+        <span className={`rounded-full text-white text-[9px] font-bold px-1.5 py-0.5 leading-none min-w-[16px] text-center ${badgeColor === "red" ? "bg-red-500" : "bg-blue-500"}`}>
+          {Number(badge) > 9 ? "9+" : badge}
         </span>
       )}
     </Link>
-  );
-}
-
-// ── Sidebar notifications panel ───────────────────────────────────────────────
-
-function NotificationsPanel({ onClose }: { onClose: () => void }) {
-  const [notifs, setNotifs] = useState<SidebarNotif[]>(() => syncNotifications());
-
-  function dismiss(id: string) {
-    dismissSidebarNotification(id);
-    setNotifs((prev) => prev.filter((n) => n.id !== id));
-  }
-
-  function dismissAll() {
-    localStorage.setItem("sidebar-notifications", "[]");
-    setNotifs([]);
-  }
-
-  return (
-    <div className="absolute left-[220px] bottom-0 w-80 rounded-xl border border-border bg-background shadow-xl z-50 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-foreground">Notifications</span>
-        <div className="flex items-center gap-2">
-          {notifs.length > 0 && (
-            <button onClick={dismissAll} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-              Clear all
-            </button>
-          )}
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <div className="max-h-80 overflow-y-auto">
-        {notifs.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No notifications</p>
-          </div>
-        ) : (
-          notifs.map((n) => (
-            <div key={n.id} className="flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
-              <div className={`mt-0.5 shrink-0 rounded-full p-1.5 ${n.type === "tat_overdue" ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"}`}>
-                {n.type === "tat_overdue"
-                  ? <AlertTriangle className="h-3 w-3" />
-                  : <MessageSquare className="h-3 w-3" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground">{n.title}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{n.body}</p>
-              </div>
-              <button onClick={() => dismiss(n.id)} className="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors mt-0.5">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -207,8 +106,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
 export default function AppSidebar() {
   const navigate = useNavigate();
   const [credits, setCredits] = useState(() => getAccountCredits());
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifCount, setNotifCount] = useState(() => syncNotifications().length);
+  const [notifCount, setNotifCount] = useState(0);
 
   useEffect(() => {
     const sync = () => setCredits(getAccountCredits());
@@ -216,13 +114,21 @@ export default function AppSidebar() {
     return () => window.removeEventListener("creditsChanged", sync);
   }, []);
 
-  // Re-sync notification count periodically
   useEffect(() => {
-    const refresh = () => setNotifCount(syncNotifications().length);
-    refresh();
-    const id = setInterval(refresh, 30_000);
+    syncRequestNotifications();
+    setNotifCount(unreadCount());
+    const id = setInterval(() => {
+      syncRequestNotifications();
+      setNotifCount(unreadCount());
+    }, 30_000);
     return () => clearInterval(id);
   }, []);
+
+  // Update badge count when navigating away from /notifications
+  const location = useLocation();
+  useEffect(() => {
+    setNotifCount(unreadCount());
+  }, [location.pathname]);
 
   return (
     <aside className="flex h-screen w-[220px] flex-col border-r border-sidebar-border bg-sidebar relative">
@@ -246,36 +152,13 @@ export default function AppSidebar() {
         <SidebarItem icon={<Inbox className="h-4 w-4" />} label="All Incoming Requests" to="/exchange/incoming" />
         <SidebarItem icon={<Send className="h-4 w-4" />} label="All Outgoing Requests" to="/exchange/outgoing" />
         <SidebarItem icon={<PenLine className="h-4 w-4" />} label="Writerate" to="/writerate" />
-
-        {/* Notifications */}
-        <div className="relative">
-          <button
-            onClick={() => setNotifOpen((o) => !o)}
-            className={cn(
-              "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-              notifOpen
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            )}
-          >
-            <Bell className="h-4 w-4 shrink-0" />
-            <span className="flex-1 text-left">Notifications</span>
-            {notifCount > 0 && (
-              <span className="rounded-full bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 leading-none min-w-[16px] text-center">
-                {notifCount > 9 ? "9+" : notifCount}
-              </span>
-            )}
-          </button>
-          {notifOpen && (
-            <NotificationsPanel
-              onClose={() => {
-                setNotifOpen(false);
-                setNotifCount(getSidebarNotifications().length);
-              }}
-            />
-          )}
-        </div>
-
+        <SidebarItem
+          icon={<Bell className="h-4 w-4" />}
+          label="Notifications"
+          to="/notifications"
+          badge={notifCount}
+          badgeColor="red"
+        />
         <SidebarItem icon={<HelpCircle className="h-4 w-4" />} label="Help Center" to="/help" />
       </nav>
 
@@ -325,7 +208,7 @@ export default function AppSidebar() {
           <span>Settings</span>
         </button>
 
-        {/* Profile row — clickable */}
+        {/* Profile row */}
         <button
           onClick={() => navigate("/profile")}
           className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors text-left"

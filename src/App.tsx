@@ -22,6 +22,7 @@ import AddCredits from "./pages/AddCredits";
 import Upgrade from "./pages/Upgrade";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import NotificationsPage from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/marketplace/websites" element={<MarketplaceWebsites />} />
           <Route path="/marketplace/orders" element={<MarketplaceOrders />} />
           <Route path="/transactions" element={<ViewTransactions />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/writerate" element={<Writerate />} />
